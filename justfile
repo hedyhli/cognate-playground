@@ -1,6 +1,6 @@
 # List options
 default:
-  just -l
+  @just -l
 
 # `elm make` --> public/main.js
 build:
