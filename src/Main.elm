@@ -16,7 +16,7 @@ main =
     }
 
 type alias TheStack = Stack Int
-type alias StackOperator = TheStack -> TheStack
+type alias StackOperator = TheStack -> Result String TheStack
 
 type alias Model =
   { stack : TheStack
@@ -38,31 +38,30 @@ type Msg
   = Submit
   | TextChange String
 
-type StackOp
-  = Pop1
-  | Add
-  | Push Int
-  | Nop
-
 type StackInOp
   = S TheStack
-  | Op StackOp
+  | Op StackOperator
   | Error String
 
 exeStack1Op : StackInOp -> StackInOp -> StackInOp
 exeStack1Op s o =
   case (s, o) of
     (Op op, S stack) ->
-      case op of
-        Pop1 -> S (Stack.pop stack |> Tuple.second)
-        Add -> S (opAdd stack)
-        Push number -> S (Stack.push number stack)
-        Nop -> S (stack)
+      case op stack of
+        Ok newStack -> S newStack
+        Err error -> Error error
     (Op _, Error err) -> Error err
     _ -> Error "Internal error during foldl!"
 
-opAdd : StackOperator
-opAdd stack =
+opPush : Int -> TheStack -> Result String TheStack
+opPush new stack = Stack.push new stack |> Ok
+
+opNop : StackOperator
+-- opNop stack = Ok stack
+opNop stack = Ok (Stack.push 999 stack)
+
+get2Operands : String -> (Int -> Int -> Int) -> StackOperator
+get2Operands opName fn stack =
   let
       first = Stack.pop stack
       second = Stack.pop (Tuple.second first)
@@ -70,26 +69,38 @@ opAdd stack =
       b = Tuple.first second
   in
     case (a, b) of
-      (Just opr1, Just opr2) -> Stack.push (opr1 + opr2) (Tuple.second second)
-      _ -> stack
+      (Just opr1, Just opr2) -> Stack.push (fn opr2 opr1) (Tuple.second second) |> Ok
+      (Just opr1, Nothing) ->
+        String.concat
+        [ "First operand is "
+        , String.fromInt opr1
+        , ", second operand not found."
+        ] |> Err
+      _ -> String.concat ["Not enough operands for ", opName, " operation (exactly 2 needed)"] |> Err
 
-exeStackOps : TheStack -> List StackOp -> Result String TheStack
+opAdd : StackOperator
+opAdd stack = get2Operands "+" (+) stack
+
+opSub : StackOperator
+opSub stack = get2Operands "-" (-) stack
+
+exeStackOps : TheStack -> List StackOperator -> Result String TheStack
 exeStackOps stack ops =
   case (List.map Op ops |> List.foldl exeStack1Op (S stack)) of
     S newStack -> Ok newStack
     Op _ -> Err "Internal error after foldl!"
     Error err -> Err err
 
-parseToken : String -> Result String (List StackOp)
+parseToken : String -> Result String (List StackOperator)
 parseToken tok =
   case String.toInt tok of
-    Just number -> Ok [Push number]
+    Just number -> Ok [opPush number]
     Nothing -> case tok of
-      "x" -> Ok [Pop1]
-      "+" -> Ok [Add]
+      "+" -> Ok [opAdd]
+      "-" -> Ok [opSub]
       _ -> Err (String.concat ["Invalid token: ", tok])
 
-unwrapParseResult : (List (Result String StackOp)) -> Result String (List StackOp)
+unwrapParseResult : (List (Result String StackOperator)) -> Result String (List StackOperator)
 unwrapParseResult parsedTokenResults =
   let
       partitioned = List.partition (
@@ -102,7 +113,7 @@ unwrapParseResult parsedTokenResults =
   in
     case (Tuple.second partitioned |> List.head) of
       Just err -> (Result.map List.singleton err)
-      Nothing -> Ok (Tuple.first partitioned |> List.map (Result.withDefault Nop))
+      Nothing -> Ok (Tuple.first partitioned |> List.map (Result.withDefault opNop))
 
 parseInput : Model -> Model
 parseInput model =
