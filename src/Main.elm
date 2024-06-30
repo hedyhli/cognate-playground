@@ -21,7 +21,7 @@ type alias StackOperator = TheStack -> Result String TheStack
 type alias Model =
   { stack : TheStack
   , input : String
-  , error : List String
+  , errors : List String
   }
 
 init : () -> (Model, Cmd Msg)
@@ -137,8 +137,8 @@ parseInput model =
     |> unwrapParseResult
     |> Result.andThen (exeStackOps Stack.empty)
     ) of
-  Ok newStack -> { model | stack = newStack, error = [] }
-  Err error -> { model | stack = Stack.empty, error = error }
+  Ok newStack -> { model | stack = newStack, errors = [] }
+  Err error -> { model | stack = Stack.empty, errors = error }
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
@@ -160,5 +160,5 @@ view model =
     [ input [onInput TextChange] [ text model.input]
     , button [ onClick Submit ] [ text "Submit" ]
     , (if Stack.isEmpty model.stack then p [] [] else pre [] [ code [] [text (printStack model.stack) ] ])
-    , p (if List.length model.error > 0 then [class "notice"] else []) [ ol [] (List.map (\e -> li [] [ text e ]) model.error) ]
+    , p (if List.length model.errors > 0 then [class "notice"] else []) [ ol [] (List.map (\e -> li [] [ text e ]) model.errors) ]
     ]
