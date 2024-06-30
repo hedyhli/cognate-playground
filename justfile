@@ -1,5 +1,5 @@
 # List options
-defualt:
+default:
   just -l
 
 # `elm make` --> public/main.js
