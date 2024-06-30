@@ -45,6 +45,7 @@ type StackOp
 type StackInOp
   = S (Stack Int)
   | Op StackOp
+  | Error String
 
 exeStack1Op : StackInOp -> StackInOp -> StackInOp
 exeStack1Op s o =
@@ -55,13 +56,15 @@ exeStack1Op s o =
         Pop2 -> S (Stack.pop stack |> Tuple.second |> Stack.pop |> Tuple.second)
         Push number -> S (Stack.push number stack)
         Nop -> S (stack)
-    _ -> S (Stack.fromList [0])
+    (Op _, Error err) -> Error err
+    _ -> Error "Internal error during foldl!"
 
-exeStackOps : Stack Int -> List StackOp -> Stack Int
+exeStackOps : Stack Int -> List StackOp -> Result String (Stack Int)
 exeStackOps stack ops =
   case (List.map Op ops |> List.foldl exeStack1Op (S stack)) of
-    S newStack -> newStack
-    _ -> Stack.fromList [0, 0]
+    S newStack -> Ok newStack
+    Op _ -> Err "Internal error after foldl!"
+    Error err -> Err err
 
 parseToken : String -> Result String (List StackOp)
 parseToken tok =
@@ -70,27 +73,41 @@ parseToken tok =
     Nothing -> case tok of
       "x" -> Ok [Pop1]
       "x2" -> Ok [Pop2]
-      _ -> Err "invalid token"
+      _ -> Err (String.concat ["Invalid token: ", tok])
 
-parseInput : Model -> Result String Model
+unwrapParseResult : (List (Result String StackOp)) -> Result String (List StackOp)
+unwrapParseResult parsedTokenResults =
+  let
+      partitioned = List.partition (
+        \res ->
+          case res of
+            Ok _ -> True
+            Err _ -> False
+        )
+        parsedTokenResults
+  in
+    case (Tuple.second partitioned |> List.head) of
+      Just err -> (Result.map List.singleton err)
+      Nothing -> Ok (Tuple.first partitioned |> List.map (Result.withDefault Nop))
+
+parseInput : Model -> Model
 parseInput model =
-  Ok { model
-  | stack = (
+  case (
     String.split " " model.input
-    |> List.concatMap (\tok -> case parseToken tok of
-    Ok stackOpt -> stackOpt
-    Err _ -> [Nop]) -- Error during parsing
-    |> exeStackOps Stack.empty
-    )
-  }
+    |> List.concatMap (\tok ->
+      case (parseToken tok) of
+        Ok ops -> List.map Ok ops
+        Err error -> [Err error])
+    |> unwrapParseResult
+    |> Result.andThen (exeStackOps Stack.empty)
+    ) of
+  Ok newStack -> { model | stack = newStack, error = "No error after parsing" }
+  Err error -> { model | stack = Stack.empty, error = error }
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
-    Submit ->
-      case parseInput model of
-        Ok newModel -> (newModel, Cmd.none)
-        Err error -> ({ model | error = "There was an error!" }, Cmd.none)
+    Submit -> (parseInput model, Cmd.none)
     TextChange s ->
       ( { model | input = s }
       , Cmd.none
