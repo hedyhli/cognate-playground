@@ -15,9 +15,11 @@ main =
     , view = view
     }
 
+type alias TheStack = Stack Int
+type alias StackOperator = TheStack -> TheStack
 
 type alias Model =
-  { stack : Stack Int
+  { stack : TheStack
   , input : String
   , error : String
   }
@@ -28,7 +30,7 @@ init _ =
   , Cmd.none
   )
 
-printStack : Stack Int -> String
+printStack : TheStack -> String
 printStack stack =
     stack |> Stack.map String.fromInt |> Stack.toList |> List.reverse |> String.join " "
 
@@ -38,12 +40,12 @@ type Msg
 
 type StackOp
   = Pop1
-  | Pop2
+  | Add
   | Push Int
   | Nop
 
 type StackInOp
-  = S (Stack Int)
+  = S TheStack
   | Op StackOp
   | Error String
 
@@ -53,13 +55,25 @@ exeStack1Op s o =
     (Op op, S stack) ->
       case op of
         Pop1 -> S (Stack.pop stack |> Tuple.second)
-        Pop2 -> S (Stack.pop stack |> Tuple.second |> Stack.pop |> Tuple.second)
+        Add -> S (opAdd stack)
         Push number -> S (Stack.push number stack)
         Nop -> S (stack)
     (Op _, Error err) -> Error err
     _ -> Error "Internal error during foldl!"
 
-exeStackOps : Stack Int -> List StackOp -> Result String (Stack Int)
+opAdd : StackOperator
+opAdd stack =
+  let
+      first = Stack.pop stack
+      second = Stack.pop (Tuple.second first)
+      a = Tuple.first first
+      b = Tuple.first second
+  in
+    case (a, b) of
+      (Just opr1, Just opr2) -> Stack.push (opr1 + opr2) (Tuple.second second)
+      _ -> stack
+
+exeStackOps : TheStack -> List StackOp -> Result String TheStack
 exeStackOps stack ops =
   case (List.map Op ops |> List.foldl exeStack1Op (S stack)) of
     S newStack -> Ok newStack
@@ -72,7 +86,7 @@ parseToken tok =
     Just number -> Ok [Push number]
     Nothing -> case tok of
       "x" -> Ok [Pop1]
-      "x2" -> Ok [Pop2]
+      "+" -> Ok [Add]
       _ -> Err (String.concat ["Invalid token: ", tok])
 
 unwrapParseResult : (List (Result String StackOp)) -> Result String (List StackOp)
