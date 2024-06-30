@@ -72,11 +72,14 @@ get2Operands opName fn stack =
       (Just opr1, Just opr2) -> Stack.push (fn opr2 opr1) (Tuple.second second) |> Ok
       (Just opr1, Nothing) ->
         String.concat
-        [ "First operand is "
+        [ "Too few operands for '"
+        , opName
+        , "' operation. "
+        , "First operand is "
         , String.fromInt opr1
         , ", second operand not found."
         ] |> Err
-      _ -> String.concat ["Not enough operands for ", opName, " operation (exactly 2 needed)"] |> Err
+      _ -> String.concat ["Not enough operands for '", opName, "' operation (exactly 2 needed)"] |> Err
 
 opAdd : StackOperator
 opAdd stack = get2Operands "+" (+) stack
@@ -91,13 +94,13 @@ exeStackOps stack ops =
     Op _ -> Err "Internal error after foldl!"
     Error err -> Err err
 
-parseToken : String -> Result String (List StackOperator)
+parseToken : String -> Result String StackOperator
 parseToken tok =
   case String.toInt tok of
-    Just number -> Ok [opPush number]
+    Just number -> Ok (opPush number)
     Nothing -> case tok of
-      "+" -> Ok [opAdd]
-      "-" -> Ok [opSub]
+      "+" -> Ok opAdd
+      "-" -> Ok opSub
       _ -> Err (String.concat ["Invalid token: ", tok])
 
 unwrapParseResult : (List (Result String StackOperator)) -> Result String (List StackOperator)
@@ -119,10 +122,7 @@ parseInput : Model -> Model
 parseInput model =
   case (
     String.split " " model.input
-    |> List.concatMap (\tok ->
-      case (parseToken tok) of
-        Ok ops -> List.map Ok ops
-        Err error -> [Err error])
+    |> List.map parseToken
     |> unwrapParseResult
     |> Result.andThen (exeStackOps Stack.empty)
     ) of
