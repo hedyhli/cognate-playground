@@ -21,12 +21,12 @@ type alias StackOperator = TheStack -> Result String TheStack
 type alias Model =
   { stack : TheStack
   , input : String
-  , error : String
+  , error : List String
   }
 
 init : () -> (Model, Cmd Msg)
 init _ =
-  ( Model Stack.empty "1 2" "No error"
+  ( Model Stack.empty "" []
   , Cmd.none
   )
 
@@ -57,8 +57,7 @@ opPush : Int -> TheStack -> Result String TheStack
 opPush new stack = Stack.push new stack |> Ok
 
 opNop : StackOperator
--- opNop stack = Ok stack
-opNop stack = Ok (Stack.push 999 stack)
+opNop stack = Ok stack
 
 get2Operands : String -> (Int -> Int -> Int) -> StackOperator
 get2Operands opName fn stack =
@@ -87,12 +86,15 @@ opAdd stack = get2Operands "+" (+) stack
 opSub : StackOperator
 opSub stack = get2Operands "-" (-) stack
 
-exeStackOps : TheStack -> List StackOperator -> Result String TheStack
+opMult : StackOperator
+opMult stack = get2Operands "*" (*) stack
+
+exeStackOps : TheStack -> List StackOperator -> Result (List String) TheStack
 exeStackOps stack ops =
   case (List.map Op ops |> List.foldl exeStack1Op (S stack)) of
     S newStack -> Ok newStack
-    Op _ -> Err "Internal error after foldl!"
-    Error err -> Err err
+    Op _ -> Err ["Internal error after foldl!"]
+    Error err -> Err [String.concat ["Error during eval: ", err]]
 
 parseToken : String -> Result String StackOperator
 parseToken tok =
@@ -101,9 +103,12 @@ parseToken tok =
     Nothing -> case tok of
       "+" -> Ok opAdd
       "-" -> Ok opSub
-      _ -> Err (String.concat ["Invalid token: ", tok])
+      "*" -> Ok opMult
+      "" -> Ok opNop
+      " " -> Ok opNop
+      _ -> Err (String.concat ["Invalid token: '", tok, "'"])
 
-unwrapParseResult : (List (Result String StackOperator)) -> Result String (List StackOperator)
+unwrapParseResult : (List (Result String StackOperator)) -> Result (List String) (List StackOperator)
 unwrapParseResult parsedTokenResults =
   let
       partitioned = List.partition (
@@ -113,10 +118,16 @@ unwrapParseResult parsedTokenResults =
             Err _ -> False
         )
         parsedTokenResults
+
+      errors = Tuple.second partitioned
   in
-    case (Tuple.second partitioned |> List.head) of
-      Just err -> (Result.map List.singleton err)
-      Nothing -> Ok (Tuple.first partitioned |> List.map (Result.withDefault opNop))
+    if List.length errors > 0 then
+      (errors |> List.map (\x ->
+        case x of
+          Err e -> e
+          _ -> ""
+        ) |> Err)
+    else Ok (Tuple.first partitioned |> List.map (Result.withDefault opNop))
 
 parseInput : Model -> Model
 parseInput model =
@@ -126,7 +137,7 @@ parseInput model =
     |> unwrapParseResult
     |> Result.andThen (exeStackOps Stack.empty)
     ) of
-  Ok newStack -> { model | stack = newStack, error = "No error after parsing" }
+  Ok newStack -> { model | stack = newStack, error = [] }
   Err error -> { model | stack = Stack.empty, error = error }
 
 update : Msg -> Model -> (Model, Cmd Msg)
@@ -146,9 +157,8 @@ subscriptions model =
 view : Model -> Html Msg
 view model =
   div []
-    [ h1 [] [ text "Cognate playground" ]
-    , textarea [onInput TextChange] [ text model.input]
+    [ input [onInput TextChange] [ text model.input]
     , button [ onClick Submit ] [ text "Submit" ]
-    , div [] [ text (printStack model.stack) ]
-    , p [] [ text model.error ]
+    , (if Stack.isEmpty model.stack then p [] [] else pre [] [ code [] [text (printStack model.stack) ] ])
+    , p (if List.length model.error > 0 then [class "notice"] else []) [ ol [] (List.map (\e -> li [] [ text e ]) model.error) ]
     ]
