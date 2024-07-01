@@ -2,9 +2,10 @@ module Main exposing (main)
 
 import Browser
 import Html exposing (..)
-import Html.Attributes exposing (class)
+import Html.Attributes as Attr
 import Html.Events exposing (..)
 import Stack exposing (..)
+import Browser.Events exposing (onKeyUp)
 
 main : Program () Model Msg
 main =
@@ -22,11 +23,12 @@ type alias Model =
   { stack : TheStack
   , input : String
   , errors : List String
+  , live : Bool
   }
 
 init : () -> (Model, Cmd Msg)
 init _ =
-  ( Model Stack.empty "" []
+  ( Model Stack.empty "" [] True
   , Cmd.none
   )
 
@@ -37,6 +39,7 @@ printStack stack =
 type Msg
   = Submit
   | TextChange String
+  | ToggleLive Bool
 
 type StackInOp
   = S TheStack
@@ -98,7 +101,7 @@ exeStackOps stack ops =
 
 parseToken : String -> Result String StackOperator
 parseToken tok =
-  case String.toInt tok of
+  case tok |> String.toInt of
     Just number -> Ok (opPush number)
     Nothing -> case tok of
       "+" -> Ok opAdd
@@ -144,21 +147,36 @@ update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
     Submit -> (parseInput model, Cmd.none)
-    TextChange s ->
-      ( { model | input = s }
-      , Cmd.none
-      )
+    TextChange s -> (if not model.live then { model | input = s } else parseInput { model | input = s }, Cmd.none)
+    ToggleLive newState -> ({ model | live = newState }, Cmd.none)
 
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
   Sub.none
 
+
+pluralify : Int -> String -> String
+pluralify count word =
+  String.concat [ count |> String.fromInt, " ", word, if count == 1 then "" else "s" ]
+
 view : Model -> Html Msg
 view model =
   div []
-    [ input [onInput TextChange] [ text model.input]
-    , button [ onClick Submit ] [ text "Submit" ]
-    , (if Stack.isEmpty model.stack then p [] [] else pre [] [ code [] [text (printStack model.stack) ] ])
-    , p (if List.length model.errors > 0 then [class "notice"] else []) [ ol [] (List.map (\e -> li [] [ text e ]) model.errors) ]
+    [ div [] [ label []
+      [ input [ Attr.type_ "checkbox" , Attr.checked model.live , onCheck ToggleLive ] []
+      , text "Live eval" ]]
+    , div [] [ textarea [onInput TextChange, Attr.style "width" "100%" ] [ text model.input] ]
+    , div [ Attr.style "text-align" "right" ] (
+      if not model.live then
+        [ button [ onClick Submit ] [ text "Submit" ] ]
+      else [])
+    , if Stack.isEmpty model.stack then
+      p [] []
+    else
+      pre [] [ code [] [text (printStack model.stack) ] ]
+    , if List.length model.errors > 0 then
+        p [ Attr.class "notice" ] [ text "Errors:", ol [] (List.map (\e -> li [] [ text e ]) model.errors) ]
+      else
+        p [] []
     ]
