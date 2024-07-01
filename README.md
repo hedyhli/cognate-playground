@@ -5,5 +5,5 @@ The plan is to write tree-sitter grammar for Cognate, compile for WASM, then use
 an Elm or JS-based interpreter to evaluate on top of the AST.
 
 It might be possible to compile the original Cognate to WASM and use that as its
-runtime, but as of right now Cognate lacks a tree-sitter grammar, so there's
-that.
+runtime, but as of right now Cognate lacks a tree-sitter grammar, so we'll stick
+to it first.
