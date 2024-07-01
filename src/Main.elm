@@ -92,6 +92,16 @@ opSub stack = get2Operands "-" (-) stack
 opMult : StackOperator
 opMult stack = get2Operands "*" (*) stack
 
+opTwin : StackOperator
+opTwin stack =
+  let
+      first = Stack.pop stack
+      a = Tuple.first first
+  in
+  case a of
+    Just item -> Stack.push item stack |> Ok
+    Nothing -> Err "One operand needed for Twin"
+
 exeStackOps : TheStack -> List StackOperator -> Result (List String) TheStack
 exeStackOps stack ops =
   case (List.map Op ops |> List.foldl exeStack1Op (S stack)) of
@@ -107,6 +117,7 @@ parseToken tok =
       "+" -> Ok opAdd
       "-" -> Ok opSub
       "*" -> Ok opMult
+      "Twin" -> Ok opTwin
       "" -> Ok opNop
       " " -> Ok opNop
       _ -> Err (String.concat ["Invalid token: '", tok, "'"])
@@ -136,6 +147,7 @@ parseInput : Model -> Model
 parseInput model =
   case (
     String.split " " model.input
+    |> List.reverse
     |> List.map parseToken
     |> unwrapParseResult
     |> Result.andThen (exeStackOps Stack.empty)
