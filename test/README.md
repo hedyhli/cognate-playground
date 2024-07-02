@@ -1,5 +1,5 @@
-Test attempt at the actual interactive playground that is made of only static
-files.
+Test attempt at the actual interactive playground that remains fully
+client-side.
 
 <img src="https://raw.githubusercontent.com/hedyhli/cognate-playground/main/test/demo.png" width=800/>
 
@@ -20,5 +20,11 @@ See `example.cog` for what it is capable of right now.
 
 Files
 - tree-sitter.js, tree-sitter.wasm -- from tree-sitter releases
-- tree-sitter-cognate.wasm -- build from tree-sitter-cognate
+- tree-sitter-cognate.wasm -- built from tree-sitter-cognate
 - index.html -- the entire app
+
+References
+- <https://tree-sitter.github.io/tree-sitter/playground>
+- <https://github.com/tree-sitter/tree-sitter/blob/master/docs/assets/js/playground.js>
+- <https://github.com/tree-sitter/tree-sitter/blob/master/lib/binding_web/tree-sitter-web.d.ts>
+- <https://github.com/gleam-lang/language-tour/blob/main/static/worker.js>
