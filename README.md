@@ -12,8 +12,11 @@ WASM.
 Here are two approaches.
 
 - Interpreter
+  Similar to [fengari](https://github.com/fengari-lua/fengari) for Lua (and Fennel)
+
   1. Tree-sitter parser
-  1. Walk the tree and evaluate like an interpreter.
+  1. Walk the tree and evaluate like an interpreter, such as using a JS-based
+     VM.
 
 - Compile to JS
   Similar to what the Gleam interactive tutorial does:
