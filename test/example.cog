@@ -1,0 +1,10 @@
+Print "hello, world!" to the console;
+
+~~ This is a comment
+
+Let as A;
+Let as B "abc";
+Print A B 2;
+~~ => [undefined A] abc 2
+~~ Try errors:
+~~   Print 1 2 \ 3 ?

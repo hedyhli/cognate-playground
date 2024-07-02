@@ -1,0 +1,211 @@
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="https://unpkg.com/simpledotcss/simple.min.css">
+    <style>
+:root {
+  --code: white;
+  --bg: #212121;
+  --accent-bg: #2b2b2b;
+  --text: #dcdcdc;
+  --text-light: #ababab;
+  --accent: #ffb300;
+  --accent-hover: #ffe099;
+  --accent-text: var(--bg);
+  --code: #f06292;
+  --preformatted: #ccc;
+  --disabled: #111;
+}
+    </style>
+    <title>Cognate TS test</title>
+  </head>
+
+  <body>
+    <header>
+      <nav><a href="#">Source</a></nav>
+      <h4>Cognate TS Test</h4>
+    </header>
+    <main>
+      <div id="myapp">
+        <textarea id="input" style="font-family: var(--mono-font); padding: .7rem 1rem; height: 10rem;"></textarea>
+        <pre><p style="color: var(--text-light); margin-top: 0">Output:</p><code id="output" style="line-height: 1;"></code></pre>
+        <pre><p style="color: var(--text-light); margin-top: 0">Errors:</p><code id="output-error" style="line-height: 1;"></code></pre>
+        <details><summary>JS</summary>
+          <pre><code id="output-js" style="line-height: 1;"></code></pre>
+        </details>
+        <details><summary>Tree</summary>
+          <pre><code id="output-tree" style="line-height: 1;"></code></pre>
+        </details>
+      </div>
+    </main>
+    <script src="tree-sitter.js"></script>
+    <script type="module">
+const $input = document.getElementById("input")
+const $output = document.getElementById("output")
+const $outputError = document.getElementById("output-error")
+const $outputJs = document.getElementById("output-js")
+const $outputTree = document.getElementById("output-tree")
+
+await TreeSitter.init()
+const parser = new TreeSitter();
+
+const Cognate = await TreeSitter.Language.load('tree-sitter-cognate.wasm');
+parser.setLanguage(Cognate);
+
+const jsPrelude = String.raw`export let output = '';
+const cog = {
+  Print: function(...arr) {
+    output += arr.join(" ") + "\n"
+    console.log(arr)
+  },
+  Let: function(...arr) {
+    cog[arr[0]] = arr.length > 1 ? arr[1] : '[undefined ' + arr[0] + ']';
+  }
+}
+//END
+
+`
+
+////////
+
+async function redraw () {
+  const tree = parser.parse($input.value);
+  const cursor = tree.walk();
+
+  let row = '';
+  const rows = [];
+  let js = jsPrelude;
+  let errors = [];
+  let finishedRow = false;
+  let visitedChildren = false;
+  let indentLevel = 0;
+
+  let in_fn = false;
+  let fn_name = "";
+
+  for (let i = 0;; i++) {
+    let displayName;
+    let nameColor = "var(--text)";
+    if (cursor.nodeIsMissing) {
+      displayName = `MISSING ${cursor.nodeType}`;
+      nameColor = "var(--marked)";
+    } else if (cursor.nodeIsNamed) {
+      displayName = cursor.nodeType;
+    }
+
+    if (displayName == "ERROR") {
+      nameColor = "var(--marked)";
+    }
+
+    if (visitedChildren) {
+      if (displayName) {
+        finishedRow = true;
+      }
+
+      let prev_type = cursor.nodeType;
+      let prev_text = cursor.nodeText;
+      let prev_start = cursor.startPosition;
+
+      if (cursor.gotoNextSibling()) {
+        visitedChildren = false;
+      } else if (cursor.gotoParent()) {
+        visitedChildren = true;
+        indentLevel--;
+
+        if (prev_type == "ERROR" && cursor.nodeType == "ERROR") {
+          errors.push(`Unexpected token: ${prev_text} <span style='color: var(--text-light)'>(${prev_start.row}, ${prev_start.column})</span>`)
+        }
+
+        if (cursor.nodeType == "fn_stmt") {
+          js += ");\n";
+          fn_name = "";
+        }
+      } else {
+        break;
+      }
+    } else {
+      if (displayName) {
+        if (finishedRow) {
+          row += '</div>';
+          rows.push(row);
+          finishedRow = false;
+        }
+        const start = cursor.startPosition;
+        const end = cursor.endPosition;
+        const id = cursor.nodeId;
+        let fieldName = cursor.currentFieldName;
+        if (fieldName) {
+          fieldName = `<span style="color: lightskyblue;">${fieldName}</span>: `;
+        } else {
+          fieldName = '';
+        }
+        const parenLeft = "<span style='color: var(--text-light)'>(</span>"
+        const parenRight = "<span style='color: var(--text-light)'>)</span>"
+        row = `<div style='margin: 0 0'>${'  '.repeat(indentLevel)}${fieldName}${parenLeft}<span style='color: ${nameColor}' data-id=${id} data-range="${start.row},${start.column},${end.row},${end.column}">${displayName}</span>${parenRight}`;
+        finishedRow = true;
+
+        if (cursor.nodeIsMissing) {
+          errors.push(`Missing: ${cursor.nodeType} <span style='color: var(--text-light)'>(${start.row}, ${start.column})</span>`)
+        }
+
+        if (in_fn) {
+          js += `cog.${cursor.nodeText}(`
+          fn_name = cursor.nodeText;
+        } else if (cursor.nodeType == "string" || cursor.nodeType == "number") {
+          js += `${cursor.nodeText}, `
+        } else if (cursor.nodeType == "identifier") {
+          console.log(fn_name, cursor.nodeText);
+          if (fn_name == 'Let') {
+            js += `"${cursor.nodeText}", `;
+          } else {
+            js += `cog.${cursor.nodeText}, `;
+          }
+        }
+      }
+
+      in_fn = cursor.nodeType == "fn_stmt";
+
+      if (cursor.gotoFirstChild()) {
+        visitedChildren = false;
+        indentLevel++;
+      } else {
+        visitedChildren = true;
+      }
+    }
+  }
+  if (finishedRow) {
+    row += '</div>';
+    rows.push(row);
+  }
+
+  cursor.delete();
+
+  $outputTree.setHTMLUnsafe(rows.join("\n"));
+  $outputJs.setHTMLUnsafe(js);
+
+  const js2 = btoa(unescape(encodeURIComponent(js)));
+  const mod = await import(`data:application/javascript;base64,${js2}`);
+  $output.setHTMLUnsafe(mod.output);
+
+  let err = "<span style='color: var(--text-light)'>None!</span>"
+  if (errors.length != 0) {
+    err = "<ol>"
+    for (let i=0; i<errors.length; i+=1) {
+      err += `<li>${errors[i]}</li>`
+    }
+    err += "</ol>"
+  }
+  $outputError.setHTMLUnsafe(err);
+}
+
+//////////
+
+$input.addEventListener("input", async function (event) {
+  await redraw();
+});
+
+redraw();
+    </script>
+    <footer><p>Footer</p></footer>
+  </body>
+</html>

@@ -29,3 +29,5 @@ Here are two approaches.
   1. Tree-sitter parser
   1. Walk the tree, compile to JS
   1. Run the JS directly
+
+  Take a look at [`./test/`](./test/) for a crude, but working, prototype.
