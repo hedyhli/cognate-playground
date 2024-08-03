@@ -1,33 +1,34 @@
-The end goal is to make an online playground for the [Cognate programming
-language](https://cognate-lang.github.io), using Elm.
+# Cognate Playground
 
-Ideas
+The goal is to build an interactive playground that remains fully client-side
+(i.e., rather than simply calling the official Cognate CLI in a sandboxed
+environment).
 
-The official Cognate implementation compiles Cognate to C, then to an
-executable. This doesn't seem very useful if we want everything to run in the
-frontend. So we'll probably use the [tree-sitter grammar for
-Cognate](https://github.com/hedyhli/tree-sitter-cognate) as a parser, loaded as
-WASM.
+<img src="https://raw.githubusercontent.com/hedyhli/cognate-playground/main/demo.png" width=800/>
 
-Here are two approaches.
+Files
+- tree-sitter.js, tree-sitter.wasm -- from tree-sitter releases
+- tree-sitter-cognate.wasm -- built from
+  [tree-sitter-cognate](https://github.com/hedyhli/tree-sitter-cognate)
+- elm directory -- contains an elm stack-calculator app that I made in
+  preparation for this project (initially intending to use elm), which is now
+  kept for posterity.
+- index.html -- the entire app (for now!)
 
-- Interpreter
-  Similar to [fengari](https://github.com/fengari-lua/fengari) for Lua (and Fennel)
+It can currently walk the tree provided by tree-sitter, and produce a useful
+stack for the program.
 
-  1. Tree-sitter parser
-  1. Walk the tree and evaluate like an interpreter, such as using a JS-based
-     VM.
+Todo
+- [ ] Flatten the list (when `Do` encountered)
+- [ ] Adapt the justfile
+- [ ] Either use a JS interpreter or output JS to be imported as a module
+- [ ] Support symbols
+- [ ] Support `List`
+- [ ] Built-in functions
+- [ ] Tests
 
-- Compile to JS
-  Similar to what the Gleam interactive tutorial does:
-  <https://github.com/gleam-lang/language-tour/blob/970c3b6e00c12edd8cf68793673b5da0a2ca4255/static/worker.js>
-
-  This approach seems to require less overhead than the other one, whilst
-  benefiting the ecosystem as a whole (allowing us to write Cognate and compile
-  it to JS).
-
-  1. Tree-sitter parser
-  1. Walk the tree, compile to JS
-  1. Run the JS directly
-
-  Take a look at [`./test/`](./test/) for a crude, but working, prototype.
+References
+- <https://tree-sitter.github.io/tree-sitter/playground>
+- <https://github.com/tree-sitter/tree-sitter/blob/master/docs/assets/js/playground.js>
+- <https://github.com/tree-sitter/tree-sitter/blob/master/lib/binding_web/tree-sitter-web.d.ts>
+- <https://github.com/gleam-lang/language-tour/blob/main/static/worker.js>

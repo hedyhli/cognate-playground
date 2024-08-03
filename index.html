@@ -151,7 +151,7 @@ function test(tree) {
   }
   let outstack = [];
   inner(root, outstack);
-  output += `\nFinal: ${printArr(outstack)}\n`
+  output += `\n\n${printArr(outstack)}\n`
   $output.setHTMLUnsafe(output);
 }
 
