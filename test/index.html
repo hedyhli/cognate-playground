@@ -22,8 +22,8 @@
 
   <body>
     <header>
-      <nav><a href="#">Source</a></nav>
-      <h4>Cognate TS Test</h4>
+      <nav><a href="https://github.com/hedyhli/cognate-playground">Source</a></nav>
+      <h4>Cognate Playground</h4>
     </header>
     <main>
       <div id="myapp">
@@ -68,24 +68,153 @@ const cog = {
 
 ////////
 
-async function redraw () {
+async function redraw() {
   const tree = parser.parse($input.value);
+  draw_tree(tree);
+  test(tree);
+}
+
+// Return a string representation of a nested array.
+function printArr(arr) {
+  let output = "";
+
+  const iter = (item, i) => {
+    if (typeof item == 'object') {
+      output += "[";
+      if (item.length > 0) {
+        item.forEach(iter);
+        output = output.slice(0, output.length-2);
+      }
+      output += "], ";
+    } else {
+      output += `${item}, `;
+    }
+  };
+  arr.forEach(iter);
+
+  return `[${output.slice(0, output.length-2)}]`;
+}
+
+function test(tree) {
+  const root = tree.rootNode;
+  let output = "";
+
+  function inner(node, stack) {
+    let inStmt = false;
+    let inBlock = false;
+
+    let name;
+    if (node.isMissing) {
+      name = `MISSING ${node.type}`;
+    } else if (node.isNamed) {
+      name = node.type;
+    } else {
+      return;
+    }
+
+    if (name.endsWith("_comment")) {
+      return;
+    }
+
+    // output += " -" + name + "\n"
+
+    switch (name) {
+      case "block":
+        inBlock = true;
+        stack.push([]);
+        break;
+      case "statement":
+        inStmt = true;
+        stack.push([]);
+        break;
+      case "number":
+      case "string":
+      case "identifier":
+        stack.push(node.text);
+        break;
+    }
+
+    if (inStmt || inBlock) {
+      let pushto = stack[stack.length-1];
+      node.children.forEach((child, c) => inner(child, pushto));
+
+      if (inStmt) {
+        let inside = stack[stack.length-1];
+        stack.splice(stack.length-1, 1);
+        inside = inside.reverse();
+        inside.forEach((item) => stack.push(item));
+      }
+    } else {
+      node.children.forEach((child, c) => inner(child, stack));
+    }
+    // output += `:: ${printArr(outstack)}\n`
+  }
+  let outstack = [];
+  inner(root, outstack);
+  output += `\nFinal: ${printArr(outstack)}\n`
+  $output.setHTMLUnsafe(output);
+}
+
+function walk(tree) {
+  const cursor = tree.walk();
+  let output = "";
+  let indent = 0;
+  let visitedChildren = false;
+
+  while (true) {
+    // Name
+    let name;
+    if (cursor.nodeIsMissing) {
+      name = `MISSING ${cursor.nodeType}`;
+    } else if (cursor.nodeIsNamed) {
+      name = cursor.nodeType;
+    }
+
+    if (!visitedChildren) {
+      // Output
+      if (name) {
+        output += `${'  '.repeat(indent)}${name}\n`
+      }
+
+      // Visit children
+      if (cursor.gotoFirstChild()) {
+        indent++;
+      } else {
+        visitedChildren = true;
+      }
+    } else {
+      // Visit next node
+      if (cursor.gotoNextSibling()) {
+        visitedChildren = false;
+      } else if (cursor.gotoParent()) {
+        indent--;
+        visitedChildren = true;
+      } else {
+        // Nothing else to visit
+        break;
+      }
+    }
+  }
+  
+  cursor.delete();
+
+  $output.setHTMLUnsafe(output);
+}
+
+function draw_tree(tree) {
   const cursor = tree.walk();
 
   let row = '';
   const rows = [];
-  let js = jsPrelude;
   let errors = [];
   let finishedRow = false;
   let visitedChildren = false;
   let indentLevel = 0;
 
-  let in_fn = false;
-  let fn_name = "";
-
   for (let i = 0;; i++) {
     let displayName;
     let nameColor = "var(--text)";
+
     if (cursor.nodeIsMissing) {
       displayName = `MISSING ${cursor.nodeType}`;
       nameColor = "var(--marked)";
@@ -115,12 +244,8 @@ async function redraw () {
         if (prev_type == "ERROR" && cursor.nodeType == "ERROR") {
           errors.push(`Unexpected token: ${prev_text} <span style='color: var(--text-light)'>(${prev_start.row}, ${prev_start.column})</span>`)
         }
-
-        if (cursor.nodeType == "fn_stmt") {
-          js += ");\n";
-          fn_name = "";
-        }
       } else {
+        // No parent and no sibling
         break;
       }
     } else {
@@ -147,23 +272,7 @@ async function redraw () {
         if (cursor.nodeIsMissing) {
           errors.push(`Missing: ${cursor.nodeType} <span style='color: var(--text-light)'>(${start.row}, ${start.column})</span>`)
         }
-
-        if (in_fn) {
-          js += `cog.${cursor.nodeText}(`
-          fn_name = cursor.nodeText;
-        } else if (cursor.nodeType == "string" || cursor.nodeType == "number") {
-          js += `${cursor.nodeText}, `
-        } else if (cursor.nodeType == "identifier") {
-          console.log(fn_name, cursor.nodeText);
-          if (fn_name == 'Let') {
-            js += `"${cursor.nodeText}", `;
-          } else {
-            js += `cog.${cursor.nodeText}, `;
-          }
-        }
       }
-
-      in_fn = cursor.nodeType == "fn_stmt";
 
       if (cursor.gotoFirstChild()) {
         visitedChildren = false;
@@ -181,11 +290,6 @@ async function redraw () {
   cursor.delete();
 
   $outputTree.setHTMLUnsafe(rows.join("\n"));
-  $outputJs.setHTMLUnsafe(js);
-
-  const js2 = btoa(unescape(encodeURIComponent(js)));
-  const mod = await import(`data:application/javascript;base64,${js2}`);
-  $output.setHTMLUnsafe(mod.output);
 
   let err = "<span style='color: var(--text-light)'>None!</span>"
   if (errors.length != 0) {
