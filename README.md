@@ -6,6 +6,9 @@ environment).
 
 <img src="https://raw.githubusercontent.com/hedyhli/cognate-playground/main/demo.png" width=800/>
 
+It currently supports defining variables and functions, as well as subset of
+built-in functions for now.
+
 Files
 - tree-sitter.js, tree-sitter.wasm -- from tree-sitter releases
 - tree-sitter-cognate.wasm -- built from
@@ -19,12 +22,15 @@ It can currently walk the tree provided by tree-sitter, and produce a useful
 stack for the program.
 
 Todo
-- [ ] Flatten the list (when `Do` encountered)
+- [ ] Optimizations on the stack (such as flattening when `Do` encountered)
+- [ ] Proper "types"
 - [ ] Adapt the justfile
-- [ ] Either use a JS interpreter or output JS to be imported as a module
-- [ ] Support symbols
+- [ ] Support symbols and floats
+- [ ] Consider feasibility of transpiling to JS
 - [ ] Support `List`
-- [ ] Built-in functions
+- [ ] Support `Box`
+- [ ] Better standard library coverage
+- [ ] Closures and edge cases
 - [ ] Tests
 
 References
