@@ -69,6 +69,14 @@ function escape(string) {
         : string || '';
 }
 
+function textLight(text) {
+  return `<span style='color: var(--text-light)'>${text}</span>`;
+}
+
+function textMarked(text) {
+  return `<span style='color: var(--marked)'>${text}</span>`;
+}
+
 const CONSTS = {
   True: true,
   False: false,
@@ -81,7 +89,7 @@ function appendError(message) {
 }
 
 function redrawErrors() {
-  let html = "<span style='color: var(--text-light)'>None!</span>"
+  let html = textLight("None!");
   if (Errors.length != 0) {
     html = "<ol>";
     html += Errors.map((item) => `<li>${item}</li>`).join("");
@@ -107,12 +115,13 @@ function _repr(item) {
     case 'object':
       return escape(item.name);
     case 'number':
-    case 'boolean':
       return item;
+    case 'boolean':
+      return textMarked(item ? 'True' : 'False');
     case 'string':
       return `"${escape(item)}"`;
     default:
-      return `(repr unknown item ${escape(item)})`;
+      return textLight(`(repr unknown item ${textMarked(escape(item))})`);
   }
 }
 function _printArr(arr) {
@@ -204,6 +213,10 @@ function test(tree) {
 
   let res = process(outstack, [], {...CONSTS});
 
+  if (res.error != "") {
+    appendError(res.error);
+  }
+
   output += `${_printArr(res.stack)}\n`;
   $outputDebug.setHTMLUnsafe(output);
 
@@ -221,7 +234,7 @@ function process(stack, op, env) {
       if (value != undefined) {
         return value;
       } else {
-        error = `unknown symbol ${escape(item.name)}`;
+        error = `unknown symbol ${textMarked(escape(item.name))}`;
         return undefined;
       }
     } else {
@@ -236,18 +249,18 @@ function process(stack, op, env) {
         if (Array.isArray(value)) {
           return 'block';
         }
-        error = `(unknown item ${escape(value)})`;
+        error = `unknown item ${textMarked(escape(value))}`;
         return undefined;
       case 'number':
         return value;
       case 'string':
         return escape(value);
       case 'boolean':
-        return `(${value})`;
+        return textMarked(value ? 'True' : 'False');
       case 'undefined':
         return undefined;
       default:
-        error = `(unknown item ${value})`;
+        error = `unknown item ${value}`;
         return undefined;
     }
   }
@@ -268,7 +281,6 @@ function process(stack, op, env) {
   for (let s = 0; s < stack.length; s++) {
     let item = stack[s];
     if (error != "") {
-      appendError(`Error at ${_repr(item)}`);
       break;
     }
     // output += `\nStack: ${op.map(_repr).join()}\nThis: ${_repr(item)}\n`
@@ -283,7 +295,6 @@ function process(stack, op, env) {
                 if (str) {
                   output += `${str} `;
                 } else {
-                  error = "in Print: " + error;
                   break;
                 }
               }
@@ -292,7 +303,7 @@ function process(stack, op, env) {
             case 'Do':
               let do_result = process(op.pop(), op, env);
               if (do_result.error != "") {
-                error = "at Do: " + error;
+                error = `at ${textMarked('Do')}: ${do_result.error}`;
                 break;
               }
               op = do_result.stack;
@@ -358,10 +369,12 @@ function process(stack, op, env) {
               break;
             case 'Not':
               a = getVar(op.pop());
+              if (a == undefined)
+                break;
               if (typeof a == 'boolean') {
                 op.push(!a);
               } else {
-                error = "Not only supports boolean"
+                error = `${textMarked('Not')} only supports boolean`
               }
               break;
             case 'If':
@@ -395,6 +408,7 @@ function process(stack, op, env) {
                 // Defined, and is a function.
                 let call_result = process(env[item.name].do, op, env);
                 if (call_result.error != "") {
+                  error = `in function call of ${textMarked(item.name)}: ` + call_result.error;
                   break;
                 }
                 op = call_result.stack;
@@ -414,9 +428,6 @@ function process(stack, op, env) {
     };
   }
 
-  if (error != "") {
-    appendError(error);
-  }
   return {output: output, stack: op, error: error};
 }
 
@@ -506,7 +517,7 @@ function draw_tree(tree) {
         indentLevel--;
 
         if (prev_type == "ERROR" && cursor.nodeType == "ERROR") {
-          Errors.push(`unexpected token: ${prev_text} <span style='color: var(--text-light)'>(${prev_start.row}, ${prev_start.column})</span>`)
+          Errors.push(`unexpected token: ${textMarked(prev_text)} ` + textLight(`(${prev_start.row}, ${prev_start.column})`));
         }
       } else {
         // No parent and no sibling
@@ -528,13 +539,13 @@ function draw_tree(tree) {
         } else {
           fieldName = '';
         }
-        const parenLeft = "<span style='color: var(--text-light)'>(</span>"
-        const parenRight = "<span style='color: var(--text-light)'>)</span>"
+        const parenLeft = textLight("(")
+        const parenRight = textLight(")")
         row = `<div style='margin: 0 0'>${'  '.repeat(indentLevel)}${fieldName}${parenLeft}<span style='color: ${nameColor}' data-id=${id} data-range="${start.row},${start.column},${end.row},${end.column}">${displayName}</span>${parenRight}`;
         finishedRow = true;
 
         if (cursor.nodeIsMissing) {
-          Errors.push(`missing: ${cursor.nodeType} <span style='color: var(--text-light)'>(${start.row}, ${start.column})</span>`)
+          Errors.push(`missing: ${textMarked(cursor.nodeType)} ` + textLight(`(${start.row}, ${start.column})`))
         }
       }
 
