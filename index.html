@@ -29,7 +29,7 @@
       <div id="myapp">
         <textarea id="input" style="font-family: var(--mono-font); padding: .7rem 1rem; height: 10rem;"></textarea>
         <pre><p style="color: var(--text-light); margin-top: 0">Output:</p><code id="output" style="line-height: 1;"></code></pre>
-        <pre><p style="color: var(--text-light); margin-top: 0">Debug:</p><code id="output-debug" style="line-height: 1;"></code></pre>
+        <pre><p style="color: var(--text-light); margin-top: 0">Stack:</p><code id="output-debug" style="line-height: 1;"></code></pre>
         <pre><p style="color: var(--text-light); margin-top: 0">Errors:</p><code id="output-error" style="line-height: 1;"></code></pre>
         <details><summary>Tree</summary>
           <pre><code id="output-tree" style="line-height: 1;"></code></pre>
@@ -51,6 +51,11 @@ const Cognate = await TreeSitter.Language.load('tree-sitter-cognate.wasm');
 parser.setLanguage(Cognate);
 
 ////////
+
+const CONSTS = {
+  True: true,
+  False: false,
+};
 
 function appendError(message) {
   $outputError.setHTMLUnsafe($outputError.innerHTML + `<p>${message}<p>`);
@@ -162,14 +167,16 @@ function test(tree) {
     }
     // output += `:: ${printArr(outstack)}\n`
   }
+
   let outstack = [];
   inner(root, outstack);
 
-  output += `\n${printArr(outstack)}\n`
+  let res = process(outstack, [], {...CONSTS});
+
+  output += `${_printArr(res.stack)}\n`;
   $outputDebug.setHTMLUnsafe(output);
-  let res = process(outstack, [], {True: true, False: false});
+
   output = res.output;
-  output += `\n\nFinal Stack: ${_printArr(res.stack)}\n`;
   $output.setHTMLUnsafe(output);
 }
 
@@ -374,7 +381,7 @@ function process(stack, op, env) {
         break;
     };
   }
-  // console.table(env);
+
   if (error != "") {
     appendError(error);
   }
