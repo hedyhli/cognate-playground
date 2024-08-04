@@ -57,14 +57,28 @@ const CONSTS = {
   False: false,
 };
 
+let Errors = [];
+
 function appendError(message) {
-  $outputError.setHTMLUnsafe($outputError.innerHTML + `<p>${message}<p>`);
+  Errors.push(message);
+}
+
+function redrawErrors() {
+  let html = "<span style='color: var(--text-light)'>None!</span>"
+  if (Errors.length != 0) {
+    html = "<ol>";
+    html += Errors.map((item) => `<li>${item}</li>`).join("");
+    html += "</ol>";
+  }
+  $outputError.setHTMLUnsafe(html);
 }
 
 async function redraw() {
   const tree = parser.parse($input.value);
+  Errors = [];
   draw_tree(tree);
   test(tree);
+  redrawErrors();
 }
 
 // Return a string representation of a nested array.
@@ -251,7 +265,7 @@ function process(stack, op, env) {
                 if (str) {
                   output += `${str} `;
                 } else {
-                  appendError("Error during Print popping");
+                  error = "in Print: " + error;
                   break;
                 }
               }
@@ -260,7 +274,7 @@ function process(stack, op, env) {
             case 'Do':
               let do_result = process(op.pop(), op, env);
               if (do_result.error != "") {
-                appendError("Error at Do");
+                error = "at Do: " + error;
                 break;
               }
               op = do_result.stack;
@@ -439,7 +453,6 @@ function draw_tree(tree) {
 
   let row = '';
   const rows = [];
-  let errors = [];
   let finishedRow = false;
   let visitedChildren = false;
   let indentLevel = 0;
@@ -475,7 +488,7 @@ function draw_tree(tree) {
         indentLevel--;
 
         if (prev_type == "ERROR" && cursor.nodeType == "ERROR") {
-          errors.push(`Unexpected token: ${prev_text} <span style='color: var(--text-light)'>(${prev_start.row}, ${prev_start.column})</span>`)
+          Errors.push(`unexpected token: ${prev_text} <span style='color: var(--text-light)'>(${prev_start.row}, ${prev_start.column})</span>`)
         }
       } else {
         // No parent and no sibling
@@ -503,7 +516,7 @@ function draw_tree(tree) {
         finishedRow = true;
 
         if (cursor.nodeIsMissing) {
-          errors.push(`Missing: ${cursor.nodeType} <span style='color: var(--text-light)'>(${start.row}, ${start.column})</span>`)
+          Errors.push(`missing: ${cursor.nodeType} <span style='color: var(--text-light)'>(${start.row}, ${start.column})</span>`)
         }
       }
 
@@ -523,16 +536,6 @@ function draw_tree(tree) {
   cursor.delete();
 
   $outputTree.setHTMLUnsafe(rows.join("\n"));
-
-  let err = "<span style='color: var(--text-light)'>None!</span>"
-  if (errors.length != 0) {
-    err = "<ol>"
-    for (let i=0; i<errors.length; i+=1) {
-      err += `<li>${errors[i]}</li>`
-    }
-    err += "</ol>"
-  }
-  $outputError.setHTMLUnsafe(err);
 }
 
 //////////

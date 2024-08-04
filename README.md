@@ -22,9 +22,11 @@ It can currently walk the tree provided by tree-sitter, and produce a useful
 stack for the program.
 
 Todo
+- [X] Working interpreter
 - [ ] Optimizations on the stack (such as flattening when `Do` encountered)
 - [ ] Proper "types"
 - [ ] Adapt the justfile
+- [ ] More informative errors (with token span info from tree-sitter)
 - [ ] Support symbols and floats
 - [ ] Consider feasibility of transpiling to JS
 - [ ] Support `List`
