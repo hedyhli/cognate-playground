@@ -23,6 +23,7 @@ stack for the program.
 
 Todo
 - [X] Working interpreter
+- [X] Escape HTML
 - [ ] Optimizations on the stack (such as flattening when `Do` encountered)
 - [ ] Proper "types"
 - [ ] Adapt the justfile

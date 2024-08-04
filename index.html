@@ -52,6 +52,23 @@ parser.setLanguage(Cognate);
 
 ////////
 
+// Taken from lodash
+function escape(string) {
+  const htmlEscapes = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+  };
+  const reUnescapedHtml = /[&<>"']/g;
+  const reHasUnescapedHtml = RegExp(reUnescapedHtml.source);
+
+  return string && reHasUnescapedHtml.test(string)
+        ? string.replace(reUnescapedHtml, (chr) => htmlEscapes[chr])
+        : string || '';
+}
+
 const CONSTS = {
   True: true,
   False: false,
@@ -88,14 +105,14 @@ function printArr(arr) {
 function _repr(item) {
   switch (typeof item) {
     case 'object':
-      return item.name;
+      return escape(item.name);
     case 'number':
     case 'boolean':
       return item;
     case 'string':
-      return `"${item}"`;
+      return `"${escape(item)}"`;
     default:
-      return `(repr unknown item ${item})`;
+      return `(repr unknown item ${escape(item)})`;
   }
 }
 function _printArr(arr) {
@@ -204,7 +221,7 @@ function process(stack, op, env) {
       if (value != undefined) {
         return value;
       } else {
-        error = `unknown symbol ${item.name}`;
+        error = `unknown symbol ${escape(item.name)}`;
         return undefined;
       }
     } else {
@@ -219,11 +236,12 @@ function process(stack, op, env) {
         if (Array.isArray(value)) {
           return 'block';
         }
-        error = `(unknown item ${value})`;
+        error = `(unknown item ${escape(value)})`;
         return undefined;
       case 'number':
-      case 'string':
         return value;
+      case 'string':
+        return escape(value);
       case 'boolean':
         return `(${value})`;
       case 'undefined':
