@@ -24,11 +24,13 @@ stack for the program.
 Todo
 - [X] Working interpreter
 - [X] Escape HTML
-- [ ] Optimizations on the stack
 - [X] Proper "types"
 - [X] Scoping
-- [ ] More informative errors (with token span info from tree-sitter)
 - [X] Support symbols and floats
+- [ ] Support `Set` to update values from outer scope
+- [ ] Prevent stack overflows
+- [ ] Optimizations on the stack
+- [ ] More informative errors (with token span info from tree-sitter)
 - [ ] Consider feasibility of transpiling to JS
 - [ ] Support `List`
 - [ ] Support `Box`
