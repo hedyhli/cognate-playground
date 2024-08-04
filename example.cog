@@ -11,9 +11,9 @@ Print 1 A 9 B;
 ~~   Print 1 2 \ 3 Foobar
 
 Print If == 1 Modulo by 3 of 10
-	"PASS: Modulo"
+  "PASS: Modulo"
 else
-	"FAIL: Modulo";
+  "FAIL: Modulo";
 
 Def Thrice as (
   Let X;

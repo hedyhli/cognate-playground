@@ -50,6 +50,16 @@ const parser = new TreeSitter();
 const Cognate = await TreeSitter.Language.load('tree-sitter-cognate.wasm');
 parser.setLanguage(Cognate);
 
+let Prelude = '';
+// TODO: Error message on failure.
+
+fetch("prelude.cog")
+  .then((res) => res.text())
+  .then((text) => {
+    Prelude = text;
+  })
+  .catch((e) => console.error(e));
+
 ////////
 
 // Taken from lodash
@@ -77,9 +87,23 @@ function textMarked(text) {
   return `<span style='color: var(--marked)'>${text}</span>`;
 }
 
-const CONSTS = {
-  True: true,
-  False: false,
+const CONSTS = {};
+
+const token2object = {
+  number: token => ({ type: 'number', value: Number.parseFloat(token) }),
+  string: token => ({ type: 'string', value: token.slice(1, token.length-1) }),
+  boolean: token => ({ type: 'boolean', value: (token == 'True') }),
+  identifier: token => ({ type: 'identifier', value: token }),
+  symbol: token => ({ type: 'symbol', value: token.slice(1) }),
+};
+
+const value2object = {
+  number: value => ({ type: 'number', value: value }),
+  string: value => ({ type: 'string', value: value }),
+  boolean: value => ({ type: 'boolean', value: value }),
+  identifier: value => ({ type: 'identifier', value: value }),
+  symbol: value => ({ type: 'symbol', value: value }),
+  function: body => ({ type: 'function', body: body }),
 };
 
 let Errors = [];
@@ -102,28 +126,32 @@ async function redraw() {
   const tree = parser.parse($input.value);
   Errors = [];
   draw_tree(tree);
-  test(tree);
+  parse(tree);
   redrawErrors();
 }
 
 // Return a string representation of a nested array.
 function printArr(arr) {
-  return arr.map((item) => (Array.isArray(item)) ? _printArr(item) : _repr(item)).join("\n")
+  return arr.map((item) => (Array.isArray(item)) ? _printArr(item) : _repr(item)).join("\n");
 }
+
 function _repr(item) {
-  switch (typeof item) {
-    case 'object':
-      return escape(item.name);
+  switch (item.type) {
+    case 'identifier':
+      return escape(item.value);
     case 'number':
-      return item;
+      return item.value;
     case 'boolean':
-      return textMarked(item ? 'True' : 'False');
+      return textMarked(item.value ? 'True' : 'False');
     case 'string':
-      return `"${escape(item)}"`;
+      return `"${escape(item.value)}"`;
+    case 'symbol':
+      return `\\${escape(item.value)}`;
     default:
-      return textLight(`(repr unknown item ${textMarked(escape(item))})`);
+      return textLight(`(repr unknown item type ${textMarked(escape(item.type))})`);
   }
 }
+
 function _printArr(arr) {
   let output = "";
 
@@ -144,7 +172,7 @@ function _printArr(arr) {
   return `[${output.slice(0, output.length-2)}]`;
 }
 
-function test(tree) {
+function parse(tree) {
   const root = tree.rootNode;
   let output = "";
 
@@ -181,15 +209,16 @@ function test(tree) {
         stack.push([]);
         break;
       case "number":
-        stack.push(Number.parseFloat(node.text));
-        break;
       case "string":
-        // Strip quotes
-        stack.push(node.text.slice(1, node.text.length-1));
-        break;
+      case "boolean":
+      case "symbol":
       case "identifier":
-        stack.push({ name: node.text });
+        stack.push(token2object[name](node.text));
         break;
+      case "source_file":
+        break;
+      default:
+        appendError(`INTERNAL ERROR: unknown token type ${textMarked(name)} from tree-sitter!`);
     }
 
     if (inStmt || inBlock) {
@@ -229,12 +258,12 @@ function process(stack, op, env) {
   let error = "";
 
   function getVar(item) {
-    if (item.name) {
-      let value = env[item.name];
+    if (item.type == 'identifier') {
+      let value = env[item.value];
       if (value != undefined) {
         return value;
       } else {
-        error = `unknown symbol ${textMarked(escape(item.name))}`;
+        error = `undefined symbol ${textMarked(escape(item.value))}`;
         return undefined;
       }
     } else {
@@ -243,184 +272,287 @@ function process(stack, op, env) {
   }
 
   function resolve(item) {
-    let value = getVar(item)
-    switch (typeof value) {
-      case 'object':
-        if (Array.isArray(value)) {
-          return 'block';
-        }
-        error = `unknown item ${textMarked(escape(value))}`;
-        return undefined;
+    if (item == undefined) {
+      return undefined;
+    }
+    if (Array.isArray(item)) {
+      return textMarked('(block)');
+    }
+
+    switch (item.type) {
       case 'number':
-        return value;
+        return item.value;
       case 'string':
-        return escape(value);
+        return escape(item.value);
+      case 'symbol':
+        return escape(item.value);
       case 'boolean':
-        return textMarked(value ? 'True' : 'False');
-      case 'undefined':
-        return undefined;
+        return textMarked(item ? 'True' : 'False');
       default:
-        error = `unknown item ${value}`;
+        error = `unknown item of type ${textMarked(escape(item.type))}, value ${textMarked(escape(item))}`;
         return undefined;
     }
   }
 
-  function expectNumber(item) {
-    let value = getVar(item);
-    switch (typeof value) {
-      case 'number':
-        return value;
-      case 'undefined':
-        return undefined;
-      default:
-        error = `Expected number, got ${value}`;
-        return undefined;
+  function exists(item, kind) {
+    if (item == undefined) {
+      error = `expected ${kind}`;
+      return undefined;
     }
+    return item;
+  }
+
+  function expect(item, type) {
+    if (item == undefined) {
+      return undefined;
+    }
+    if (item.type == type) {
+      return item;
+    }
+    error = `expected ${type}, got ${item.value}`;
+    return undefined;
   }
 
   for (let s = 0; s < stack.length; s++) {
     let item = stack[s];
+    let next = stack[s+1];
     if (error != "") {
       break;
     }
     // output += `\nStack: ${op.map(_repr).join()}\nThis: ${_repr(item)}\n`
-    switch (typeof item) {
-      case 'object':
-        if (!Array.isArray(item)) {
-          let a, b;
-          switch (item.name) {
-            case 'Print':
-              while (op.length > 0) {
-                let str = resolve(op.pop());
-                if (str) {
-                  output += `${str} `;
-                } else {
-                  break;
-                }
-              }
-              output += "\n"
-              break;
-            case 'Do':
-              let do_result = process(op.pop(), op, env);
-              if (do_result.error != "") {
-                error = `at ${textMarked('Do')}: ${do_result.error}`;
-                break;
-              }
-              op = do_result.stack;
-              output += do_result.output;
-              break;
-            case 'Def':
-              a = op.pop().name;
-              b = op.pop();
-              env[a] = { do: b };
-              break;
-            case '+':
-              a = expectNumber(op.pop());
-              if (a) {
-                b = expectNumber(op.pop());
-                if (b)
-                  op.push(a + b);
-              }
-              break;
-            case '-':
-              a = expectNumber(op.pop());
-              if (a) {
-                b = expectNumber(op.pop());
-                if (b)
-                  op.push(b - a);
-              }
-              break;
-            case '*':
-              a = expectNumber(op.pop());
-              if (a) {
-                b = expectNumber(op.pop());
-                if (b)
-                  op.push(a * b);
-              }
-              break;
-            case '/':
-              a = expectNumber(op.pop());
-              if (a) {
-                b = expectNumber(op.pop());
-                if (b)
-                  op.push(b / a);
-              }
-              break;
-            case 'Modulo':
-              a = expectNumber(op.pop());
-              if (a) {
-                b = expectNumber(op.pop());
-                if (b)
-                  op.push(b % a);
-              }
-              break;
-            case '==':
-              a = getVar(op.pop());
-              if (a == undefined)
-                break;
-              b = getVar(op.pop());
-              if (b == undefined)
-                break;
-              if (typeof a == 'number' && typeof b == 'number') {
-                op.push(a == b);
-              } else {
-                error = "'==' only supports comparison of number and number"
-              }
-              break;
-            case 'Not':
-              a = getVar(op.pop());
-              if (a == undefined)
-                break;
-              if (typeof a == 'boolean') {
-                op.push(!a);
-              } else {
-                error = `${textMarked('Not')} only supports boolean`
-              }
-              break;
-            case 'If':
-              let cond = getVar(op.pop());
-              if (cond == undefined)
-                break;
-              let then = getVar(op.pop());
-              if (then == undefined)
-                break;
-              let fallback = getVar(op.pop());
-              if (fallback == undefined)
-                break;
-              if (typeof cond == 'boolean') {
-                op.push(cond ? then : fallback);
-              } else {
-                error = `If condition must evaluate to a boolean, got ${cond}`;
-              }
-              break;
-            case 'Twin':
-              a = op.pop();
-              op.push(a);
-              op.push(a);
-              break;
-            case 'Let':
-              a = op.pop().name;
-              b = op.pop();
-              env[a] = b;
-              break;
-            default:
-              if (env[item.name] && env[item.name].do) {
-                // Defined, and is a function.
-                let call_result = process(env[item.name].do, op, env);
-                if (call_result.error != "") {
-                  error = `in function call of ${textMarked(item.name)}: ` + call_result.error;
-                  break;
-                }
-                op = call_result.stack;
-                output += call_result.output;
-              } else {
-                op.push(item);
-              }
-              break;
-          };
-        } else {
-          op.push(item);
+    if (Array.isArray(item)) {
+      op.push(item);
+      continue;
+    }
+    let a, b;
+    switch (item.type) {
+      case 'identifier':
+        if (env[item.value] && env[item.value].body) {
+          // Defined, and is a function.
+          let call_result = process(env[item.value].body, op, env);
+          if (call_result.error != "") {
+            error = `in function call of ${textMarked(item)}: ` + call_result.error;
+            break;
+          }
+          op = call_result.stack;
+          output += call_result.output;
+          continue;
         }
+        if (next != undefined && next.type == 'identifier') {
+          if (next.value == 'Def' || next.value == 'Let') {
+            op.push(item);
+            continue;
+          }
+        }
+        switch (item.value) {
+          case 'Print':
+            while (op.length > 0) {
+              let str = resolve(op.pop());
+              if (str != undefined) {
+                output += `${str} `;
+              } else {
+                break;
+              }
+            }
+            output += "\n"
+            break;
+          case 'Do':
+            let do_result = process(op.pop(), op, env);
+            if (do_result.error != "") {
+              error = `at ${textMarked('Do')}: ${do_result.error}`;
+              break;
+            }
+            op = do_result.stack;
+            output += do_result.output;
+            break;
+          case 'Def':
+            let name = expect(exists(op.pop(), 'identifier'), 'identifier');
+            let body = op.pop();
+            env[name.value] = value2object.function(body);
+            break;
+          case '+':
+            a = expect(exists(op.pop(), 'operand'), 'number');
+            if (a != undefined) {
+              b = expect(exists(op.pop(), 'operand'), 'number');
+              if (b != undefined)
+                op.push(value2object.number(a.value + b.value));
+            }
+            console.log(a, b);
+            break;
+          case '-':
+            a = expect(exists(op.pop(), 'operand'), 'number');
+            if (a) {
+              b = expect(exists(op.pop(), 'operand'), 'number');
+              if (b)
+                op.push(value2object.number(b.value - a.value));
+            }
+            break;
+          case '*':
+            a = expect(exists(op.pop(), 'operand'), 'number');
+            if (a) {
+              b = expect(exists(op.pop(), 'operand'), 'number');
+              if (b)
+                op.push(value2object.number(a.value * b.value));
+            }
+            break;
+          case '/':
+            a = expect(exists(op.pop(), 'operand'), 'number');
+            if (a) {
+              b = expect(exists(op.pop(), 'operand'), 'number');
+              if (b)
+                op.push(value2object.number(b.value / a.value));
+            }
+            break;
+          case 'Modulo':
+            a = expect(exists(op.pop(), 'operand'), 'number');
+            if (a) {
+              b = expect(exists(op.pop(), 'operand'), 'number');
+              if (b)
+                op.push(value2object.number(b.value % a.value));
+            }
+            break;
+          case '==':
+            a = expect(exists(op.pop(), 'operand'), 'number');
+            if (a == undefined)
+              break;
+            b = expect(exists(op.pop(), 'operand'), 'number');
+            if (b == undefined)
+              break;
+            op.push(value2object.boolean(a.value == b.value));
+            break;
+          case '!=':
+            a = expect(exists(op.pop(), 'operand'), 'number');
+            if (a == undefined)
+              break;
+            b = expect(exists(op.pop(), 'operand'), 'number');
+            if (b == undefined)
+              break;
+            op.push(value2object.boolean(a.value != b.value));
+            break;
+          case '>':
+            a = expect(exists(op.pop(), 'operand'), 'number');
+            if (a == undefined)
+              break;
+            b = expect(exists(op.pop(), 'operand'), 'number');
+            if (b == undefined)
+              break;
+            op.push(value2object.boolean(a.value > b.value));
+            break;
+          case '<':
+            a = expect(exists(op.pop(), 'operand'), 'number');
+            if (a == undefined)
+              break;
+            b = expect(exists(op.pop(), 'operand'), 'number');
+            if (b == undefined)
+              break;
+            op.push(value2object.boolean(a.value < b.value));
+            break;
+          case '>=':
+            a = expect(exists(op.pop(), 'operand'), 'number');
+            if (a == undefined)
+              break;
+            b = expect(exists(op.pop(), 'operand'), 'number');
+            if (b == undefined)
+              break;
+            op.push(value2object.boolean(a.value >= b.value));
+            break;
+          case '<=':
+            a = expect(exists(op.pop(), 'operand'), 'number');
+            if (a == undefined)
+              break;
+            b = expect(exists(op.pop(), 'operand'), 'number');
+            if (b == undefined)
+              break;
+            op.push(value2object.boolean(a.value <= b.value));
+            break;
+          case 'Number?':
+            a = exists(op.pop(), 'boolean operand');
+            if (a != undefined)
+              op.push(value2object.boolean(a.type == 'number'));
+            break;
+          case 'Zero?':
+            a = expect(exists(op.pop(), 'operand'), 'number');
+            if (a != undefined)
+              op.push(value2object.boolean(a.value == 0));
+            break;
+          case 'Number!':
+          case 'String!':
+          case 'Boolean!':
+            a = exists(op[op.length-1], 'operand');
+            let type = item.value.slice(0, item.value.length-1).toLowerCase();
+            if (a != undefined && a.type != type)
+              error = `${type} assertion failed`
+            break;
+          case 'Integer!':
+            a = exists(op[op.length-1], 'operand');
+            if (a != undefined && !(a.type == 'number' && Number.isInteger(a.value)))
+              error = "integer assertion failed"
+            break;
+          case 'Block!':
+            a = exists(op[op.length-1], 'operand');
+            if (a != undefined && !Array.isArray(a))
+              error = "block assertion failed"
+            break;
+          case 'Not':
+            a = expect(exists(op.pop(), 'boolean operand'), 'boolean');
+            if (a != undefined)
+              op.push(value2object.boolean(!a.value));
+            break;
+          case 'And':
+            a = expect(exists(op.pop(), 'boolean operand'), 'boolean');
+            if (a == undefined)
+              break
+            b = expect(exists(op.pop(), 'boolean operand'), 'boolean');
+            if (b == undefined)
+              break
+            op.push(value2object.boolean(a.value && b.value));
+            break;
+          case 'Or':
+            a = expect(exists(op.pop(), 'boolean operand'), 'boolean');
+            if (a == undefined)
+              break
+            b = expect(exists(op.pop(), 'boolean operand'), 'boolean');
+            if (b == undefined)
+              break
+            op.push(value2object.boolean(a.value || b.value));
+            break;
+          case 'Xor':
+            a = expect(exists(op.pop(), 'boolean operand'), 'boolean');
+            if (a == undefined)
+              break
+            b = expect(exists(op.pop(), 'boolean operand'), 'boolean');
+            if (b == undefined)
+              break
+            op.push(value2object.boolean(a.value != b.value));
+            break;
+          case 'If':
+            let cond = expect(exists(op.pop(), "condition"), 'boolean');
+            if (cond == undefined)
+              break;
+            let then = exists(op.pop(), "'then' clause");
+            if (then == undefined)
+              break;
+            let fallback = exists(op.pop(), "'else' caluse");
+            if (fallback == undefined)
+              break;
+            op.push(cond.value ? then : fallback);
+            break;
+          case 'Let':
+            a = expect(exists(op.pop(), 'identifier'), 'identifier');
+            if (a == undefined)
+              break;
+            b = exists(op.pop(), 'value to set');
+            if (b == undefined)
+              break;
+            env[a.value] = b;
+            break;
+          default:
+            a = getVar(item);
+            if (a != undefined) {
+              op.push(a);
+            }
+            break;
+        };
         break;
       default:
         op.push(item);
