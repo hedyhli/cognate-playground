@@ -1,0 +1,162 @@
+Def Drop as ( Let X );
+Def Swap as ( Let X ; Let Y ; Y X );
+Def Any? ( True Drop );
+Def Twin as (Let X ; X X);
+Def Triplet as (Twin ; Twin);
+
+~~ TODO: Show, List (and hence most of these below)
+
+~~ Def Puts ( Put Fold ( Join Show ) from "" over Reverse List);
+~~ Def Prints ( Print Fold ( Join Show ) from "" over Reverse List);
+
+Def When as (
+	Let Cond;
+	Let Block;
+	Do If Cond then Block else ();
+);
+
+Def Unless as ( When Not );
+
+Def While (
+	Let Condition;
+	Let Block;
+	Let Result be Do Condition;
+	When Result then ( Do Block ; While Condition Block )
+);
+
+Def Until (
+	Let Condition;
+	Let Block;
+	Let Result be Do Condition;
+	When Not Result then ( Do Block ; While Condition Block ) else ()
+);
+
+Def Times (
+	Let I be Integer!;
+	Def B;
+	( When >= 0 I then ( B ; Do Times - 1 I (B) ) )
+);
+
+~~ TODO: I/O
+~
+Def With (
+	Let Fp be Open;
+	Do Swap Fp;
+	Close Fp
+);
+
+
+Def Reverse (
+	Let L be List!;
+	Empty ; For each in L ( Push )
+);
+
+
+Def For (
+	Let L;
+	Let B;
+	When Not Empty? L (
+		Do B First L;
+		For each in Rest L do B;
+	)
+);
+
+Def Fold (
+	Let B;
+	Let I;
+	Let L;
+	I ; For each in L do B;
+);
+
+Def Filter (
+	Def Predicate;
+	Let L;
+	Empty;
+	For each in L (
+		Let I;
+		Let R be Predicate I;
+		When R ( Push I );
+	);
+	Reverse;
+);
+
+Def Min as (
+	Let A;
+	Let B;
+	If < A B then B else A;
+);
+
+Def Max as (
+	Let A;
+	Let B;
+	If < A B then A else B;
+);
+
+Def Take-while (
+	Def P;
+	Let L;
+	Def H as (
+		Let L;
+		Unless Empty? L (
+			Let F be First L;
+			Let R be P of F;
+			When R then (
+				Push F;
+				H Rest L
+			)
+		)
+	);
+	Reverse H L Empty;
+);
+
+Def All (
+	Let P;
+	Let L;
+	Do If Empty? L then ( True )
+	else (
+		Do If Do P on First L
+			then ( All P of Rest of L )
+			else ( False )
+	)
+);
+
+Def None ( ~~ Opposite of All
+	Def P;
+	Let L;
+	All ( Not P ) of L;
+);
+
+Def Append (
+	Let L2;
+	Let L1;
+	L2;
+	For each in Reverse L1 (
+		Push;
+	)
+);
+
+Def Prepend ( Swap ; Append );
+
+Def Case as (
+	Def Pred;
+	Def If-true;
+	Def If-false;
+	(
+		Let X;
+		Let B be Pred X;
+		Do If B then (If-true X) else (If-false X)
+	);
+);
+
+Def Sort (
+	Case (Empty?) ()
+	else (
+		Let L;
+		Let Pivot be First of L;
+		Sort Filter (<  Pivot) L;
+		Sort Filter (>= Pivot) Rest of L;
+		Push Pivot;
+		Append
+	);
+);
+~
