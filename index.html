@@ -29,10 +29,8 @@
       <div id="myapp">
         <textarea id="input" style="font-family: var(--mono-font); padding: .7rem 1rem; height: 10rem;"></textarea>
         <pre><p style="color: var(--text-light); margin-top: 0">Output:</p><code id="output" style="line-height: 1;"></code></pre>
+        <pre><p style="color: var(--text-light); margin-top: 0">Debug:</p><code id="output-debug" style="line-height: 1;"></code></pre>
         <pre><p style="color: var(--text-light); margin-top: 0">Errors:</p><code id="output-error" style="line-height: 1;"></code></pre>
-        <details><summary>JS</summary>
-          <pre><code id="output-js" style="line-height: 1;"></code></pre>
-        </details>
         <details><summary>Tree</summary>
           <pre><code id="output-tree" style="line-height: 1;"></code></pre>
         </details>
@@ -43,7 +41,7 @@
 const $input = document.getElementById("input")
 const $output = document.getElementById("output")
 const $outputError = document.getElementById("output-error")
-const $outputJs = document.getElementById("output-js")
+const $outputDebug = document.getElementById("output-debug")
 const $outputTree = document.getElementById("output-tree")
 
 await TreeSitter.init()
@@ -52,21 +50,11 @@ const parser = new TreeSitter();
 const Cognate = await TreeSitter.Language.load('tree-sitter-cognate.wasm');
 parser.setLanguage(Cognate);
 
-const jsPrelude = String.raw`export let output = '';
-const cog = {
-  Print: function(...arr) {
-    output += arr.join(" ") + "\n"
-    console.log(arr)
-  },
-  Let: function(...arr) {
-    cog[arr[0]] = arr.length > 1 ? arr[1] : '[undefined ' + arr[0] + ']';
-  }
-}
-//END
-
-`
-
 ////////
+
+function appendError(message) {
+  $outputError.setHTMLUnsafe($outputError.innerHTML + `<p>${message}<p>`);
+}
 
 async function redraw() {
   const tree = parser.parse($input.value);
@@ -76,10 +64,26 @@ async function redraw() {
 
 // Return a string representation of a nested array.
 function printArr(arr) {
+  return arr.map((item) => (Array.isArray(item)) ? _printArr(item) : _repr(item)).join("\n")
+}
+function _repr(item) {
+  switch (typeof item) {
+    case 'object':
+      return item.name;
+    case 'number':
+    case 'boolean':
+      return item;
+    case 'string':
+      return `"${item}"`;
+    default:
+      return `(repr unknown item ${item})`;
+  }
+}
+function _printArr(arr) {
   let output = "";
 
   const iter = (item, i) => {
-    if (typeof item == 'object') {
+    if (Array.isArray(item)) {
       output += "[";
       if (item.length > 0) {
         item.forEach(iter);
@@ -87,7 +91,7 @@ function printArr(arr) {
       }
       output += "], ";
     } else {
-      output += `${item}, `;
+      output += `${_repr(item)}, `;
     }
   };
   arr.forEach(iter);
@@ -116,6 +120,10 @@ function test(tree) {
       return;
     }
 
+    if (name == "ERROR") {
+      return;
+    }
+
     // output += " -" + name + "\n"
 
     switch (name) {
@@ -128,9 +136,14 @@ function test(tree) {
         stack.push([]);
         break;
       case "number":
+        stack.push(Number.parseFloat(node.text));
+        break;
       case "string":
+        // Strip quotes
+        stack.push(node.text.slice(1, node.text.length-1));
+        break;
       case "identifier":
-        stack.push(node.text);
+        stack.push({ name: node.text });
         break;
     }
 
@@ -151,8 +164,221 @@ function test(tree) {
   }
   let outstack = [];
   inner(root, outstack);
-  output += `\n\n${printArr(outstack)}\n`
+
+  output += `\n${printArr(outstack)}\n`
+  $outputDebug.setHTMLUnsafe(output);
+  let res = process(outstack, [], {True: true, False: false});
+  output = res.output;
+  output += `\n\nFinal Stack: ${_printArr(res.stack)}\n`;
   $output.setHTMLUnsafe(output);
+}
+
+function process(stack, op, env) {
+  let output = "";
+  let error = "";
+
+  function getVar(item) {
+    if (item.name) {
+      let value = env[item.name];
+      if (value != undefined) {
+        return value;
+      } else {
+        error = `unknown symbol ${item.name}`;
+        return undefined;
+      }
+    } else {
+      return item;
+    }
+  }
+
+  function resolve(item) {
+    let value = getVar(item)
+    switch (typeof value) {
+      case 'object':
+        if (Array.isArray(value)) {
+          return 'block';
+        }
+        error = `(unknown item ${value})`;
+        return undefined;
+      case 'number':
+      case 'string':
+        return value;
+      case 'boolean':
+        return `(${value})`;
+      case 'undefined':
+        return undefined;
+      default:
+        error = `(unknown item ${value})`;
+        return undefined;
+    }
+  }
+
+  function expectNumber(item) {
+    let value = getVar(item);
+    switch (typeof value) {
+      case 'number':
+        return value;
+      case 'undefined':
+        return undefined;
+      default:
+        error = `Expected number, got ${value}`;
+        return undefined;
+    }
+  }
+
+  for (let s = 0; s < stack.length; s++) {
+    let item = stack[s];
+    if (error != "") {
+      appendError(`Error at ${_repr(item)}`);
+      break;
+    }
+    // output += `\nStack: ${op.map(_repr).join()}\nThis: ${_repr(item)}\n`
+    switch (typeof item) {
+      case 'object':
+        if (!Array.isArray(item)) {
+          let a, b;
+          switch (item.name) {
+            case 'Print':
+              while (op.length > 0) {
+                let str = resolve(op.pop());
+                if (str) {
+                  output += `${str} `;
+                } else {
+                  appendError("Error during Print popping");
+                  break;
+                }
+              }
+              output += "\n"
+              break;
+            case 'Do':
+              let do_result = process(op.pop(), op, env);
+              if (do_result.error != "") {
+                appendError("Error at Do");
+                break;
+              }
+              op = do_result.stack;
+              output += do_result.output;
+              break;
+            case 'Def':
+              a = op.pop().name;
+              b = op.pop();
+              env[a] = { do: b };
+              break;
+            case '+':
+              a = expectNumber(op.pop());
+              if (a) {
+                b = expectNumber(op.pop());
+                if (b)
+                  op.push(a + b);
+              }
+              break;
+            case '-':
+              a = expectNumber(op.pop());
+              if (a) {
+                b = expectNumber(op.pop());
+                if (b)
+                  op.push(b - a);
+              }
+              break;
+            case '*':
+              a = expectNumber(op.pop());
+              if (a) {
+                b = expectNumber(op.pop());
+                if (b)
+                  op.push(a * b);
+              }
+              break;
+            case '/':
+              a = expectNumber(op.pop());
+              if (a) {
+                b = expectNumber(op.pop());
+                if (b)
+                  op.push(b / a);
+              }
+              break;
+            case 'Modulo':
+              a = expectNumber(op.pop());
+              if (a) {
+                b = expectNumber(op.pop());
+                if (b)
+                  op.push(b % a);
+              }
+              break;
+            case '==':
+              a = getVar(op.pop());
+              if (a == undefined)
+                break;
+              b = getVar(op.pop());
+              if (b == undefined)
+                break;
+              if (typeof a == 'number' && typeof b == 'number') {
+                op.push(a == b);
+              } else {
+                error = "'==' only supports comparison of number and number"
+              }
+              break;
+            case 'Not':
+              a = getVar(op.pop());
+              if (typeof a == 'boolean') {
+                op.push(!a);
+              } else {
+                error = "Not only supports boolean"
+              }
+              break;
+            case 'If':
+              let cond = getVar(op.pop());
+              if (cond == undefined)
+                break;
+              let then = getVar(op.pop());
+              if (then == undefined)
+                break;
+              let fallback = getVar(op.pop());
+              if (fallback == undefined)
+                break;
+              if (typeof cond == 'boolean') {
+                op.push(cond ? then : fallback);
+              } else {
+                error = `If condition must evaluate to a boolean, got ${cond}`;
+              }
+              break;
+            case 'Twin':
+              a = op.pop();
+              op.push(a);
+              op.push(a);
+              break;
+            case 'Let':
+              a = op.pop().name;
+              b = op.pop();
+              env[a] = b;
+              break;
+            default:
+              if (env[item.name] && env[item.name].do) {
+                // Defined, and is a function.
+                let call_result = process(env[item.name].do, op, env);
+                if (call_result.error != "") {
+                  break;
+                }
+                op = call_result.stack;
+                output += call_result.output;
+              } else {
+                op.push(item);
+              }
+              break;
+          };
+        } else {
+          op.push(item);
+        }
+        break;
+      default:
+        op.push(item);
+        break;
+    };
+  }
+  // console.table(env);
+  if (error != "") {
+    appendError(error);
+  }
+  return {output: output, stack: op, error: error};
 }
 
 function walk(tree) {
