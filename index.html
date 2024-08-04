@@ -123,10 +123,10 @@ function redrawErrors() {
 async function redraw() {
   const env = {};
   let result;
+
   const preludeTree = parser.parse(Prelude);
   Errors = [];
   result = parse(preludeTree, env);
-  console.log("-----")
   if (Errors.length > 0) {
     redrawErrors();
     $outputDebug.setHTMLUnsafe(result.debug);
@@ -264,7 +264,9 @@ function parse(tree, env) {
   return { debug: output, output: res.output }
 }
 
-function process(stack, op, env) {
+function process(stack, op, init_env, scoped) {
+  let env = scoped ? {...init_env} : init_env;
+
   let output = "";
   let error = "";
 
@@ -331,7 +333,6 @@ function process(stack, op, env) {
     if (error != "") {
       break;
     }
-    // output += `\nStack: ${op.map(_repr).join()}\nThis: ${_repr(item)}\n`
     if (Array.isArray(item)) {
       op.push(item);
       continue;
@@ -340,7 +341,7 @@ function process(stack, op, env) {
       case 'identifier':
         if (env[item.value] && env[item.value].body) {
           // Defined, and is a function.
-          let call_result = process(env[item.value].body, op, env);
+          let call_result = process(env[item.value].body, op, env, true);
           if (call_result.error != "") {
             error = `in ${textMarked(item.value)}: ` + call_result.error;
             break;
@@ -396,7 +397,6 @@ function process(stack, op, env) {
               if (b != undefined)
                 op.push(value2object.number(a.value + b.value));
             }
-            console.log(a, b);
             break;
           }
           case '-': {
@@ -477,7 +477,6 @@ function process(stack, op, env) {
             let b = expect(exists(op.pop(), 'operand'), 'number');
             if (b == undefined)
               break;
-            console.log(value2object.boolean(b.value < a.value));
             op.push(value2object.boolean(b.value < a.value));
             break;
           }
