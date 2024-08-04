@@ -26,7 +26,7 @@ Todo
 - [X] Escape HTML
 - [ ] Optimizations on the stack
 - [X] Proper "types"
-- [ ] Scoping
+- [X] Scoping
 - [ ] More informative errors (with token span info from tree-sitter)
 - [X] Support symbols and floats
 - [ ] Consider feasibility of transpiling to JS

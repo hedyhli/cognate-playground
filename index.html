@@ -370,7 +370,8 @@ function process(stack, op, init_env, scoped) {
             break;
           }
           case 'Do': {
-            let do_result = process(op.pop(), op, env);
+            // Blocks create a new scope.
+            let do_result = process(op.pop(), op, env, true);
             if (do_result.error != "") {
               error = `at ${textMarked('Do')}: ${do_result.error}`;
               break;

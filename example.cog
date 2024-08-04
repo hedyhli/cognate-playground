@@ -24,3 +24,15 @@ Print If == 64 * * Thrice 4
   "PASS: 4^3 == 64"
 else
   "FAIL: 4^3 != 64";
+
+
+~~ Test lexical scoping:
+Def Discard (Let X);
+
+Let X 0;
+Let A 1;
+Discard A A;
+
+~~ X should remain as 0.
+
+Print "X is" X "; A is";
