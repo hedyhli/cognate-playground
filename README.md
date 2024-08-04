@@ -24,11 +24,11 @@ stack for the program.
 Todo
 - [X] Working interpreter
 - [X] Escape HTML
-- [ ] Optimizations on the stack (such as flattening when `Do` encountered)
-- [ ] Proper "types"
-- [ ] Adapt the justfile
+- [ ] Optimizations on the stack
+- [X] Proper "types"
+- [ ] Scoping
 - [ ] More informative errors (with token span info from tree-sitter)
-- [ ] Support symbols and floats
+- [X] Support symbols and floats
 - [ ] Consider feasibility of transpiling to JS
 - [ ] Support `List`
 - [ ] Support `Box`
