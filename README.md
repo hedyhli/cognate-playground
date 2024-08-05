@@ -35,8 +35,8 @@ Todo
 - [X] Support `Set` (temporarily) to update values from outer scope
 - [ ] Support `Box` and a proper `Set`
 - [X] Function shadowing
-- [ ] Save input in localstorage
-- [ ] Presets of example code
+- [X] Save input in localstorage
+- [X] Presets of example code
 - [ ] Support `List`
 - [ ] Prevent stack overflows
 - [ ] Optimizations on the stack before parsing

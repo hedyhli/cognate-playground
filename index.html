@@ -31,8 +31,14 @@
       <small>A fully client-side interactive playground for the Cognate programming language.</small>
     </header>
     <main>
-      <div id="myapp">
-        <textarea id="input" style="font-family: var(--mono-font); padding: .7rem 1rem; height: 10rem;">Print "Hello, World!";</textarea>
+      <div>
+        <select id="select-example" name="example" style="">
+          <option value="custom" selected>Custom</option>
+          <option value="hanoi">Hanoi</option>
+          <option value="math">Math</option>
+          <option value="stack">Stack</option>
+        </select>
+        <textarea id="input" style="font-family: var(--mono-font); padding: .7rem 1rem; height: 10rem;" placeholder="Print &quot;Hello, World!&quot;"></textarea>
         <pre><p style="color: var(--text-light); margin-top: 0">Output:</p><code id="output" style="line-height: 1;"></code></pre>
         <pre><p style="color: var(--text-light); margin-top: 0">Stack:</p><code id="output-debug" style="line-height: 1;"></code></pre>
         <pre><p style="color: var(--text-light); margin-top: 0">Errors:</p><code id="output-error" style="line-height: 1;"></code></pre>
@@ -44,10 +50,19 @@
     <script src="tree-sitter.js"></script>
     <script type="module">
 const $input = document.getElementById("input")
+const $selectExample = document.getElementById("select-example")
 const $output = document.getElementById("output")
 const $outputError = document.getElementById("output-error")
 const $outputDebug = document.getElementById("output-debug")
 const $outputTree = document.getElementById("output-tree")
+
+const STORAGE_KEY = "cognate-playground";
+const Store = {
+  getInput: () => JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}').custom || 'Print "Hello, world!"',
+  saveInput: (newInput) => localStorage.setItem(STORAGE_KEY, JSON.stringify({ custom: newInput })),
+};
+
+$input.value = Store.getInput();
 
 await TreeSitter.init()
 const parser = new TreeSitter();
@@ -64,6 +79,32 @@ fetch("prelude.cog")
     Prelude = text;
   })
   .catch((e) => console.error(e));
+
+const ExamplePresets = {
+  custom: `Print "custom here"`,
+  hanoi: `Def Move discs as (
+   Let N be the number of discs;
+   Let A be the first rod;
+   Let B be the second rod;
+   Let C be the third rod;
+
+   Unless Zero? N (
+      Move - 1 N discs from A via C to B;
+      Print "disc" N ":" A "-->" C;
+      Move - 1 N discs from B via A to C;
+   )
+);
+
+show steps to Move 3 discs from \\X via \\Y to \\Z;`,
+  math: `Print - 3 5;
+Print > 10 11;
+Print == 2 Modulo 3 20;`,
+  stack: `Print Twin 0;
+Print Twin Twin 0;
+Print Drop 1 2 3 4 5;
+Print * Twin 4;
+Print * * Triplet 4;`,
+};
 
 ////////
 
@@ -125,7 +166,7 @@ function redrawErrors() {
   $outputError.setHTMLUnsafe(html);
 }
 
-async function redraw() {
+function redraw() {
   const env = {};
   let result;
 
@@ -792,8 +833,15 @@ function draw_tree(tree) {
 
 //////////
 
-$input.addEventListener("input", async function (event) {
-  await redraw();
+$input.addEventListener("input", function (event) {
+  Store.saveInput($input.value);
+  redraw();
+});
+
+$selectExample.addEventListener("change", function () {
+  let key = $selectExample.value;
+  $input.value = key == "custom" ? Store.getInput() : ExamplePresets[key];
+  redraw();
 });
 
 redraw();
