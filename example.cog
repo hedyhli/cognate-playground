@@ -1,6 +1,8 @@
 Print "hello, world!" to the console;
 
-~~ This is a comment
+~
+  This is a multiline comment
+~
 
 Let A be + 1 3;
 Let B be * Twin 5;
@@ -40,3 +42,5 @@ Print "X is" X "; A is";
 ~~ Loops
 Let X 0;
 While (< 10 X) (Set X + 1 X; Print X);
+
+~~ See variable and function shadowing from the tests in the Cognate repo.

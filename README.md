@@ -33,18 +33,18 @@ Todo
 - [X] Scoping
 - [X] Support symbols and floats
 - [X] Support `Set` (temporarily) to update values from outer scope
+- [ ] Support `Box` and a proper `Set`
 - [X] Function shadowing
 - [ ] Save input in localstorage
-- [ ] Support `Box` and a proper `Set`
 - [ ] Presets of example code
+- [ ] Support `List`
 - [ ] Prevent stack overflows
 - [ ] Optimizations on the stack before parsing
 - [ ] More informative errors (with token span info from tree-sitter)
 - [ ] Live syntax highlighting with tree-sitter
 - [ ] Consider feasibility of transpiling to JS
-- [ ] Support `List`
 - [ ] Standard library coverage
-- [X] Closures and edge cases
+- [X] Closures
 - [ ] Tests
 
 References
