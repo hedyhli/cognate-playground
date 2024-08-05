@@ -6,10 +6,6 @@ environment).
 
 <img src="https://raw.githubusercontent.com/hedyhli/cognate-playground/main/demo.png" width=800 />
 
-<br>
-
-<img src="https://raw.githubusercontent.com/hedyhli/cognate-playground/main/demo2.png" width=800 />
-
 It currently supports variables, functions, as well as subset of built-in
 functions (such as While loops) defined in `prelude.cog`.
 
@@ -36,8 +32,9 @@ Todo
 - [X] Proper "types"
 - [X] Scoping
 - [X] Support symbols and floats
-- [X] Support `Set` to update values from outer scope
+- [X] Support `Set` (temporarily) to update values from outer scope
 - [ ] Save input in localstorage
+- [ ] Support `Box` and a proper `Set`
 - [ ] Presets of example code
 - [ ] Prevent stack overflows
 - [ ] Optimizations on the stack before parsing
@@ -45,7 +42,6 @@ Todo
 - [ ] Live syntax highlighting with tree-sitter
 - [ ] Consider feasibility of transpiling to JS
 - [ ] Support `List`
-- [ ] Support `Box`
 - [ ] Standard library coverage
 - [X] Closures and edge cases
 - [ ] Tests

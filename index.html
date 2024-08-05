@@ -22,12 +22,17 @@
 
   <body>
     <header>
-      <nav><a href="https://github.com/hedyhli/cognate-playground">Source</a></nav>
+      <nav>
+        <a href="https://github.com/hedyhli/cognate-playground">Source</a>
+        <a href="https://github.com/cognate-lang/cognate">Cognate</a>
+        <a href="https://cognate-lang.github.io/learn.html">Tutorial</a>
+      </nav>
       <h4>Cognate Playground</h4>
+      <small>A fully client-side interactive playground for the Cognate programming language.</small>
     </header>
     <main>
       <div id="myapp">
-        <textarea id="input" style="font-family: var(--mono-font); padding: .7rem 1rem; height: 10rem;"></textarea>
+        <textarea id="input" style="font-family: var(--mono-font); padding: .7rem 1rem; height: 10rem;" placeholder="~~ Enter some code"></textarea>
         <pre><p style="color: var(--text-light); margin-top: 0">Output:</p><code id="output" style="line-height: 1;"></code></pre>
         <pre><p style="color: var(--text-light); margin-top: 0">Stack:</p><code id="output-debug" style="line-height: 1;"></code></pre>
         <pre><p style="color: var(--text-light); margin-top: 0">Errors:</p><code id="output-error" style="line-height: 1;"></code></pre>
@@ -793,6 +798,6 @@ $input.addEventListener("input", async function (event) {
 
 redraw();
     </script>
-    <footer><p>Footer</p></footer>
+    <footer><p>This project is work in progress. Kindly report any issues to <a href="https://github.com/hedyhli/cognate-playground/issues">the GitHub repo</a>, and when in doubt, always verify with the official Cognate compiler.</p></footer>
   </body>
 </html>
