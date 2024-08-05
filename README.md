@@ -26,7 +26,9 @@ Files
 It can currently walk the tree provided by tree-sitter, and produce a useful
 stack for the program.
 
-Todo
+### Todo
+
+Implementation
 - [X] Working interpreter
 - [X] Escape HTML
 - [X] Proper "types"
@@ -35,19 +37,21 @@ Todo
 - [X] Support `Set` (temporarily) to update values from outer scope
 - [ ] Support `Box` and a proper `Set`
 - [X] Function shadowing
-- [X] Save input in localstorage
-- [X] Presets of example code
 - [ ] Support `List`
 - [ ] Prevent stack overflows
 - [ ] Optimizations on the stack before parsing
-- [ ] More informative errors (with token span info from tree-sitter)
-- [ ] Live syntax highlighting with tree-sitter
 - [ ] Consider feasibility of transpiling to JS
 - [ ] Standard library coverage
 - [X] Closures
 - [ ] Tests
 
-References
+Others
+- [X] Presets of example code
+- [X] Save input in localstorage
+- [ ] Live syntax highlighting with tree-sitter
+- [ ] More informative errors (with token span info from tree-sitter)
+
+### References
 - <https://tree-sitter.github.io/tree-sitter/playground>
 - <https://github.com/tree-sitter/tree-sitter/blob/master/docs/assets/js/playground.js>
 - <https://github.com/tree-sitter/tree-sitter/blob/master/lib/binding_web/tree-sitter-web.d.ts>
