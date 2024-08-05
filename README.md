@@ -35,8 +35,10 @@ Implementation
 - [X] Scoping
 - [X] Support symbols and floats
 - [X] Support `Set` (temporarily) to update values from outer scope
-- [ ] Support `Box` and a proper `Set`
 - [X] Function shadowing
+- [ ] Fix lexical scoping
+- [ ] Support hoisting
+- [ ] Support `Box` and a proper `Set`
 - [ ] Support `List`
 - [ ] Prevent stack overflows
 - [ ] Optimizations on the stack before parsing

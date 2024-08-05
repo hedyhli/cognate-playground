@@ -140,6 +140,7 @@ const token2object = {
   boolean: token => ({ type: 'boolean', value: (token == 'True') }),
   identifier: token => ({ type: 'identifier', value: token }),
   symbol: token => ({ type: 'symbol', value: token.slice(1) }),
+  block: body => ({ type: 'block', body: body, env: {} }),
 };
 
 const value2object = {
@@ -148,7 +149,7 @@ const value2object = {
   boolean: value => ({ type: 'boolean', value: value ? true : false }),
   identifier: value => ({ type: 'identifier', value: value }),
   symbol: value => ({ type: 'symbol', value: value }),
-  function: body => ({ type: 'function', body: body }),
+  function: block => ({ type: 'function', body: block.body, env: block.env }),
 };
 
 let Errors = [];
@@ -192,7 +193,7 @@ function redraw() {
 
 // Return a string representation of a nested array.
 function printArr(arr) {
-  return arr.map((item) => (Array.isArray(item)) ? _printArr(item) : _repr(item)).join("\n");
+  return arr.map((item) => (item.type == 'block') ? _printArr(item.body) : _repr(item)).join("\n");
 }
 
 function _repr(item) {
@@ -216,10 +217,10 @@ function _printArr(arr) {
   let output = "";
 
   const iter = (item, i) => {
-    if (Array.isArray(item)) {
+    if (item.type == 'block') {
       output += "[";
-      if (item.length > 0) {
-        item.forEach(iter);
+      if (item.body.length > 0) {
+        item.body.forEach(iter);
         output = output.slice(0, output.length-2);
       }
       output += "], ";
@@ -262,7 +263,7 @@ function parse(tree, env) {
     switch (name) {
       case "block":
         inBlock = true;
-        stack.push([]);
+        stack.push(token2object.block([]));
         break;
       case "statement":
         inStmt = true;
@@ -282,16 +283,19 @@ function parse(tree, env) {
           appendError(`INTERNAL ERROR: unknown token type ${textMarked(name)} from tree-sitter!`);
     }
 
-    if (inStmt || inBlock) {
+    if (inStmt) {
       let pushto = stack[stack.length-1];
       node.children.forEach((child, c) => inner(child, pushto));
 
-      if (inStmt) {
-        let inside = stack[stack.length-1];
-        stack.splice(stack.length-1, 1);
-        inside = inside.reverse();
-        inside.forEach((item) => stack.push(item));
-      }
+      let inside = stack[stack.length-1];
+      stack.splice(stack.length-1, 1);
+      inside = inside.reverse();
+      inside.forEach((item) => stack.push(item));
+
+    } else if (inBlock) {
+      let pushto = stack[stack.length-1].body;
+      node.children.forEach((child, c) => inner(child, pushto));
+
     } else {
       node.children.forEach((child, c) => inner(child, stack));
     }
@@ -337,11 +341,10 @@ function process(stack, op, init_env, scoped) {
     if (item == undefined) {
       return undefined;
     }
-    if (Array.isArray(item)) {
-      return textMarked('(block)');
-    }
 
     switch (item.type) {
+      case 'block':
+        return textMarked('(block)');
       case 'number':
         return item.value;
       case 'string':
@@ -377,16 +380,17 @@ function process(stack, op, init_env, scoped) {
 
   for (let s = 0; s < stack.length; s++) {
     let item = stack[s];
-    // console.log(Array.isArray(item) ? item : item.value, _printArr(op));
+    // console.log(item.value || item, _printArr(op));
     let next = stack[s+1];
     if (error != "") {
       break;
     }
-    if (Array.isArray(item)) {
-      op.push(item);
-      continue;
-    }
     switch (item.type) {
+      case 'block': {
+        item.env = {...env};
+        op.push(item);
+        break;
+      }
       case 'identifier':
         if (next != undefined && next.type == 'identifier') {
           if (next.value == 'Def' || next.value == 'Let' || next.value == 'Set') {
@@ -396,25 +400,35 @@ function process(stack, op, init_env, scoped) {
         }
         if (env[item.value] && env[item.value].body) {
           // Defined, and is a function.
-          let call_result = process(env[item.value].body, op, env, true);
+          let call_result = process(env[item.value].body, op, env[item.value].env, true);
           if (call_result.error != "") {
             error = `in ${textMarked(item.value)}: ` + call_result.error;
             break;
           }
-          // Update variables from 'Set' calls.
-          let keys = Object.keys(call_result.updates);
-          for (let k = 0; k < keys.length; k++) {
-            let name = keys[k];
-            if (env[name] != undefined) {
-              env[name] = call_result.updates[name];
-            }
-          }
-          updates = {...updates, ...call_result.updates};
+          // // Update variables from 'Set' calls.
+          // let keys = Object.keys(call_result.updates);
+          // for (let k = 0; k < keys.length; k++) {
+          //   let name = keys[k];
+          //   if (env[name] != undefined) {
+          //     env[name] = call_result.updates[name];
+          //   }
+          // }
+          // updates = {...updates, ...call_result.updates};
           op = call_result.stack;
           output += call_result.output;
           continue;
         }
         switch (item.value) {
+          case 'Def': {
+            let a = expect(exists(op.pop(), 'identifier'), 'identifier');
+            if (a == undefined)
+              break;
+            let b = expect(exists(op.pop(), 'function body'), 'block');
+            if (b == undefined)
+              break;
+            env[a.value] = value2object.function(b);
+            break;
+          }
           case 'Print': {
             while (op.length > 0) {
               let str = resolve(op.pop());
@@ -429,32 +443,24 @@ function process(stack, op, init_env, scoped) {
           }
           case 'Do': {
             // Blocks create a new scope.
-            let do_result = process(op.pop(), op, env, true);
+            let block = expect(exists(op.pop(), 'block'), 'block');
+            // TODO: Ok to not spread env here?
+            let do_result = process(block.body, op, block.env, true);
             if (do_result.error != "") {
               error = `at ${textMarked('Do')}: ${do_result.error}`;
               break;
             }
-            // Update variables from 'Set' calls.
-            let keys = Object.keys(do_result.updates);
-            for (let k = 0; k < keys.length; k++) {
-              let name = keys[k];
-              if (env[name] != undefined) {
-                env[name] = do_result.updates[name];
-              }
-            }
-            updates = {...updates, ...do_result.updates};
+            // // Update variables from 'Set' calls.
+            // let keys = Object.keys(do_result.updates);
+            // for (let k = 0; k < keys.length; k++) {
+            //   let name = keys[k];
+            //   if (env[name] != undefined) {
+            //     env[name] = do_result.updates[name];
+            //   }
+            // }
+            // updates = {...updates, ...do_result.updates};
             op = do_result.stack;
             output += do_result.output;
-            break;
-          }
-          case 'Def': {
-            let a = expect(exists(op.pop(), 'identifier'), 'identifier');
-            if (a == undefined)
-              break;
-            let b = exists(op.pop(), 'function body');
-            if (b == undefined)
-              break;
-            env[a.value] = value2object.function(b);
             break;
           }
           case '+': {
@@ -582,6 +588,7 @@ function process(stack, op, init_env, scoped) {
           }
           case 'Number!':
           case 'String!':
+          case 'Block!':
           case 'Boolean!': {
             let a = exists(op[op.length-1], 'operand');
             let type = item.value.slice(0, item.value.length-1).toLowerCase();
@@ -593,12 +600,6 @@ function process(stack, op, init_env, scoped) {
             let a = exists(op[op.length-1], 'operand');
             if (a != undefined && !(a.type == 'number' && Number.isInteger(a.value)))
               error = "integer assertion failed"
-            break;
-          }
-          case 'Block!': {
-            let a = exists(op[op.length-1], 'operand');
-            if (a != undefined && !Array.isArray(a))
-              error = "block assertion failed"
             break;
           }
           case 'Not': {
@@ -663,20 +664,20 @@ function process(stack, op, init_env, scoped) {
             break;
           }
           case 'Set': {
-            let a = expect(exists(op.pop(), 'identifier'), 'identifier');
-            if (a == undefined)
-              break;
-            let b = op.pop();
-            if (b == undefined) {
-              error = `in ${textMarked('Set')}: value expected`;
-              break;
-            }
-            if (getVar(a) == undefined) {
-              error = `attempt to set undefined variable ${textMarked(name)}`;
-            } else {
-              updates[a.value] = b;
-              env[a.value] = b;
-            }
+            // let a = expect(exists(op.pop(), 'identifier'), 'identifier');
+            // if (a == undefined)
+            //   break;
+            // let b = op.pop();
+            // if (b == undefined) {
+            //   error = `in ${textMarked('Set')}: value expected`;
+            //   break;
+            // }
+            // if (getVar(a) == undefined) {
+            //   error = `attempt to set undefined variable ${textMarked(name)}`;
+            // } else {
+            //   updates[a.value] = b;
+            //   env[a.value] = b;
+            // }
             break;
           }
           default: {
