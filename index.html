@@ -63,6 +63,7 @@ const Store = {
 };
 
 $input.value = Store.getInput();
+$selectExample.value = "custom";
 
 await TreeSitter.init()
 const parser = new TreeSitter();
@@ -277,7 +278,8 @@ function parse(tree, env) {
       case "source_file":
         break;
       default:
-        appendError(`INTERNAL ERROR: unknown token type ${textMarked(name)} from tree-sitter!`);
+        if (!name.startsWith("MISSING"))
+          appendError(`INTERNAL ERROR: unknown token type ${textMarked(name)} from tree-sitter!`);
     }
 
     if (inStmt || inBlock) {
