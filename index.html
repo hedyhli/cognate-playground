@@ -266,6 +266,7 @@ function parse(tree, env) {
 
 function process(stack, op, init_env, scoped) {
   let env = scoped ? {...init_env} : init_env;
+  let updates = {};
 
   let output = "";
   let error = "";
@@ -346,12 +347,21 @@ function process(stack, op, init_env, scoped) {
             error = `in ${textMarked(item.value)}: ` + call_result.error;
             break;
           }
+          // Update variables from 'Set' calls.
+          let keys = Object.keys(call_result.updates);
+          for (let k = 0; k < keys.length; k++) {
+            let name = keys[k];
+            if (env[name] != undefined) {
+              env[name] = call_result.updates[name];
+            }
+          }
+          updates = {...updates, ...call_result.updates};
           op = call_result.stack;
           output += call_result.output;
           continue;
         }
         if (next != undefined && next.type == 'identifier') {
-          if (next.value == 'Def' || next.value == 'Let') {
+          if (next.value == 'Def' || next.value == 'Let' || next.value == 'Set') {
             op.push(item);
             continue;
           }
@@ -376,6 +386,15 @@ function process(stack, op, init_env, scoped) {
               error = `at ${textMarked('Do')}: ${do_result.error}`;
               break;
             }
+            // Update variables from 'Set' calls.
+            let keys = Object.keys(do_result.updates);
+            for (let k = 0; k < keys.length; k++) {
+              let name = keys[k];
+              if (env[name] != undefined) {
+                env[name] = do_result.updates[name];
+              }
+            }
+            updates = {...updates, ...do_result.updates};
             op = do_result.stack;
             output += do_result.output;
             break;
@@ -595,6 +614,23 @@ function process(stack, op, init_env, scoped) {
             env[a.value] = b;
             break;
           }
+          case 'Set': {
+            let a = expect(exists(op.pop(), 'identifier'), 'identifier');
+            if (a == undefined)
+              break;
+            let b = op.pop();
+            if (b == undefined) {
+              error = `in ${textMarked('Set')}: value expected`;
+              break;
+            }
+            if (getVar(a) == undefined) {
+              error = `attempt to set undefined variable ${textMarked(name)}`;
+            } else {
+              updates[a.value] = b;
+              env[a.value] = b;
+            }
+            break;
+          }
           default: {
             let a = getVar(item);
             if (a != undefined) {
@@ -610,7 +646,7 @@ function process(stack, op, init_env, scoped) {
     };
   }
 
-  return {output: output, stack: op, error: error};
+  return {output: output, stack: op, error: error, updates: updates};
 }
 
 function walk(tree) {

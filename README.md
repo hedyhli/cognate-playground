@@ -4,10 +4,16 @@ The goal is to build an interactive playground that remains fully client-side
 (i.e., rather than simply calling the official Cognate CLI in a sandboxed
 environment).
 
-<img src="https://raw.githubusercontent.com/hedyhli/cognate-playground/main/demo.png" width=800/>
+<img src="https://raw.githubusercontent.com/hedyhli/cognate-playground/main/demo.png" width=800 />
 
-It currently supports defining variables and functions, as well as subset of
-built-in functions for now.
+<br>
+
+<img src="https://raw.githubusercontent.com/hedyhli/cognate-playground/main/demo2.png" width=800 />
+
+It currently supports variables, functions, as well as subset of built-in
+functions (such as While loops) defined in `prelude.cog`.
+
+Take a look at `example.cog` for what it capable right now.
 
 Files
 - tree-sitter.js, tree-sitter.wasm -- from tree-sitter releases
@@ -17,6 +23,9 @@ Files
   preparation for this project (initially intending to use elm), which is now
   kept for posterity.
 - index.html -- the entire app (for now!)
+- prelude.cog -- definitions of various built-in functions. copied from the
+  Cognate repo with features that aren't yet supported commented out. eventually
+  it will simply link to the prelude.cog file from the Cognate repo.
 
 It can currently walk the tree provided by tree-sitter, and produce a useful
 stack for the program.
@@ -27,15 +36,18 @@ Todo
 - [X] Proper "types"
 - [X] Scoping
 - [X] Support symbols and floats
-- [ ] Support `Set` to update values from outer scope
+- [X] Support `Set` to update values from outer scope
+- [ ] Save input in localstorage
+- [ ] Presets of example code
 - [ ] Prevent stack overflows
-- [ ] Optimizations on the stack
+- [ ] Optimizations on the stack before parsing
 - [ ] More informative errors (with token span info from tree-sitter)
+- [ ] Live syntax highlighting with tree-sitter
 - [ ] Consider feasibility of transpiling to JS
 - [ ] Support `List`
 - [ ] Support `Box`
-- [ ] Better standard library coverage
-- [ ] Closures and edge cases
+- [ ] Standard library coverage
+- [X] Closures and edge cases
 - [ ] Tests
 
 References

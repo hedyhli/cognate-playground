@@ -11,8 +11,8 @@ Def Triplet as (Twin ; Twin);
 
 Def When as (
 	Let Cond;
-	Let Block;
-	Do If Cond then Block else ();
+	Let Block1;
+	Do If Cond then Block1 else ();
 );
 
 Def Unless as ( When Not );

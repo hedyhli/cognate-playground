@@ -36,3 +36,7 @@ Discard A A;
 ~~ X should remain as 0.
 
 Print "X is" X "; A is";
+
+~~ Loops
+Let X 0;
+While (< 10 X) (Set X + 1 X; Print X);
