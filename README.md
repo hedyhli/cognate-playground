@@ -9,7 +9,7 @@ environment).
 It currently supports variables, functions, as well as subset of built-in
 functions (such as While loops) defined in `prelude.cog`.
 
-Take a look at `example.cog` for what it capable right now.
+Take a look at `example.cog` for an overview of what it is capable right now.
 
 Files
 - tree-sitter.js, tree-sitter.wasm -- from tree-sitter releases
