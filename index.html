@@ -345,6 +345,12 @@ function process(stack, op, init_env, scoped) {
     }
     switch (item.type) {
       case 'identifier':
+        if (next != undefined && next.type == 'identifier') {
+          if (next.value == 'Def' || next.value == 'Let' || next.value == 'Set') {
+            op.push(item);
+            continue;
+          }
+        }
         if (env[item.value] && env[item.value].body) {
           // Defined, and is a function.
           let call_result = process(env[item.value].body, op, env, true);
@@ -364,12 +370,6 @@ function process(stack, op, init_env, scoped) {
           op = call_result.stack;
           output += call_result.output;
           continue;
-        }
-        if (next != undefined && next.type == 'identifier') {
-          if (next.value == 'Def' || next.value == 'Let' || next.value == 'Set') {
-            op.push(item);
-            continue;
-          }
         }
         switch (item.value) {
           case 'Print': {

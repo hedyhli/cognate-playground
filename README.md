@@ -33,6 +33,7 @@ Todo
 - [X] Scoping
 - [X] Support symbols and floats
 - [X] Support `Set` (temporarily) to update values from outer scope
+- [X] Function shadowing
 - [ ] Save input in localstorage
 - [ ] Support `Box` and a proper `Set`
 - [ ] Presets of example code
