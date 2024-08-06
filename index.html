@@ -466,6 +466,8 @@ function process(stack, op, initEnv, scoped) {
             // }
             newDefs[a.value] = true;
             env[a.value] = value2object.function(b);
+            // Include current declaration in block
+            env[a.value].env[a.value] = env[a.value];
             console.log("Defined", a.value);
             break;
           }

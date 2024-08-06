@@ -36,7 +36,7 @@ Implementation
 - [X] Support symbols and floats
 - [X] Support `Set` (temporarily) to update values from outer scope
 - [X] Function shadowing
-- [ ] Fix lexical scoping
+- [X] Fix lexical scoping
 - [ ] Support hoisting
 - [ ] Support `Box` and a proper `Set`
 - [ ] Support `List`
