@@ -11,8 +11,8 @@ Def Triplet as (Twin ; Twin);
 
 Def When as (
 	Let Cond;
-	Let Block1;
-	Do If Cond then Block1 else ();
+	Let Block;
+	Do If Cond then Block else ();
 );
 
 Def Unless as ( When Not );
@@ -79,6 +79,7 @@ Def Filter (
 	);
 	Reverse;
 );
+~
 
 Def Min as (
 	Let A;
@@ -91,7 +92,7 @@ Def Max as (
 	Let B;
 	If < A B then A else B;
 );
-
+~
 Def Take-while (
 	Def P;
 	Let L;
@@ -120,7 +121,7 @@ Def All (
 	)
 );
 
-Def None ( ~~ Opposite of All
+Def None (
 	Def P;
 	Let L;
 	All ( Not P ) of L;
@@ -136,7 +137,7 @@ Def Append (
 );
 
 Def Prepend ( Swap ; Append );
-
+~
 Def Case as (
 	Def Pred;
 	Def If-true;
@@ -147,7 +148,7 @@ Def Case as (
 		Do If B then (If-true X) else (If-false X)
 	);
 );
-
+~
 Def Sort (
 	Case (Empty?) ()
 	else (

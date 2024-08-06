@@ -38,7 +38,7 @@
           <option value="math">Math</option>
           <option value="stack">Stack</option>
         </select>
-        <textarea id="input" style="font-family: var(--mono-font); padding: .7rem 1rem; height: 10rem;" placeholder="Print &quot;Hello, World!&quot;"></textarea>
+        <textarea id="input" style="font-family: var(--mono-font); padding: .7rem 1rem; height: 20rem; resize: vertical" placeholder="Print &quot;Hello, World!&quot;"></textarea>
         <pre><p style="color: var(--text-light); margin-top: 0">Output:</p><code id="output" style="line-height: 1;"></code></pre>
         <pre><p style="color: var(--text-light); margin-top: 0">Stack:</p><code id="output-debug" style="line-height: 1;"></code></pre>
         <pre><p style="color: var(--text-light); margin-top: 0">Errors:</p><code id="output-error" style="line-height: 1;"></code></pre>
@@ -181,6 +181,7 @@ function redraw() {
     $outputError.setHTMLUnsafe("<p>Parsing of prelude failed!</p>" + $outputError.innerHTML)
     return;
   }
+  console.log("--------");
 
   Errors = [];
   const tree = parser.parse($input.value);
@@ -209,7 +210,7 @@ function _repr(item) {
     case 'symbol':
       return `\\${escape(item.value)}`;
     default:
-      return textLight(`(repr unknown item type ${textMarked(escape(item.type))})`);
+      return textLight(`(unknown item of type ${textMarked(escape(item.type))})`);
   }
 }
 
@@ -236,6 +237,7 @@ function _printArr(arr) {
 function parse(tree, env) {
   const root = tree.rootNode;
   let output = "";
+  let bail = false;
 
   function inner(node, stack) {
     let inStmt = false;
@@ -279,8 +281,11 @@ function parse(tree, env) {
       case "source_file":
         break;
       default:
-        if (!name.startsWith("MISSING"))
+        if (!name.startsWith("MISSING")) {
           appendError(`INTERNAL ERROR: unknown token type ${textMarked(name)} from tree-sitter!`);
+          bail = true;
+          return;
+        }
     }
 
     if (inStmt) {
@@ -290,7 +295,22 @@ function parse(tree, env) {
       let inside = stack[stack.length-1];
       stack.splice(stack.length-1, 1);
       inside = inside.reverse();
-      inside.forEach((item) => stack.push(item));
+
+      for(let i = 0; i < inside.length; i ++) {
+        let item = inside[i];
+        let previous = inside[i-1];
+        if (item.type == 'identifier' && ['Def', 'Let', 'Set'].includes(item.value)) {
+          if (!(previous && previous.type == 'identifier')) {
+            let error = `syntax error: ${textMarked(item.value)} must follow an identifier`;
+            if (previous)
+              error += `, got ${previous.type}`;
+            appendError(error);
+            bail = true;
+            return;
+          }
+        }
+        stack.push(item)
+      }
 
     } else if (inBlock) {
       let pushto = stack[stack.length-1].body;
@@ -305,6 +325,10 @@ function parse(tree, env) {
   let outstack = [];
   inner(root, outstack);
 
+  if (bail) {
+    return { debug: output, output: '' };
+  }
+
   let res = process(outstack, [], env);
 
   if (res.error != "") {
@@ -316,9 +340,14 @@ function parse(tree, env) {
   return { debug: output, output: res.output }
 }
 
-function process(stack, op, init_env, scoped) {
-  let env = scoped ? {...init_env} : init_env;
+function process(stack, op, initEnv, scoped) {
+  let env = scoped ? {...initEnv} : initEnv;
   let updates = {};
+
+  // Variables defined in this block;
+  // [name: string]: bool
+  // TODO: Is this necessary when we have both `initEnv` and `env`?
+  let newDefs = {};
 
   let output = "";
   let error = "";
@@ -374,7 +403,7 @@ function process(stack, op, init_env, scoped) {
     if (item.type == type) {
       return item;
     }
-    error = `expected ${type}, got ${item.value}`;
+    error = `expected ${type}, got ${item.type}`;
     return undefined;
   }
 
@@ -398,7 +427,7 @@ function process(stack, op, init_env, scoped) {
             continue;
           }
         }
-        if (env[item.value] && env[item.value].body) {
+        if (env[item.value] && env[item.value].type == 'function') {
           // Defined, and is a function.
           let call_result = process(env[item.value].body, op, env[item.value].env, true);
           if (call_result.error != "") {
@@ -420,13 +449,24 @@ function process(stack, op, init_env, scoped) {
         }
         switch (item.value) {
           case 'Def': {
-            let a = expect(exists(op.pop(), 'identifier'), 'identifier');
-            if (a == undefined)
+            // This check is technically done already during parsing.
+            let a = expect(exists(op.pop(), `identifier`), 'identifier');
+            if (a == undefined) {
+              error = `in ${textMarked('Def')}: ` + error;
               break;
-            let b = expect(exists(op.pop(), 'function body'), 'block');
-            if (b == undefined)
+            }
+            let b = expect(exists(op.pop(), `function body`), 'block');
+            if (b == undefined) {
+              error = `in ${textMarked('Def')}: ` + error;
               break;
+            }
+            // if (env[a.value] != undefined && newDefs[a.value]) {
+            //   error = `in ${textMarked('Def')}: cannot shadow in the same block`;
+            //   break;
+            // }
+            newDefs[a.value] = true;
             env[a.value] = value2object.function(b);
+            console.log("Defined", a.value);
             break;
           }
           case 'Print': {
@@ -447,7 +487,7 @@ function process(stack, op, init_env, scoped) {
             // TODO: Ok to not spread env here?
             let do_result = process(block.body, op, block.env, true);
             if (do_result.error != "") {
-              error = `at ${textMarked('Do')}: ${do_result.error}`;
+              error = `in ${textMarked('Do')}: ${do_result.error}`;
               break;
             }
             // // Update variables from 'Set' calls.
@@ -645,7 +685,7 @@ function process(stack, op, init_env, scoped) {
             let then = exists(op.pop(), "'then' clause");
             if (then == undefined)
               break;
-            let fallback = exists(op.pop(), "'else' caluse");
+            let fallback = exists(op.pop(), "'else' clause");
             if (fallback == undefined)
               break;
             op.push(cond.value ? then : fallback);
@@ -653,14 +693,21 @@ function process(stack, op, init_env, scoped) {
           }
           case 'Let': {
             let a = expect(exists(op.pop(), 'identifier'), 'identifier');
-            if (a == undefined)
+            if (a == undefined) {
+              error = `in ${textMarked('Let')}: ` + error;
               break;
+            }
             let b = op.pop();
             if (b == undefined) {
-              error = `in ${textMarked('Let')}: value expected`;
+              error = `in ${textMarked('Let')}: expected value to set`;
+              break;
+            }
+            if (env[a.value] != undefined && newDefs[a.value]) {
+              error = `in ${textMarked('Let')}: cannot shadow in the same block`;
               break;
             }
             env[a.value] = b;
+            newDefs[a.value] = true;
             break;
           }
           case 'Set': {
