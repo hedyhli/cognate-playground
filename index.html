@@ -369,6 +369,21 @@ const Builtins = {
     returns: 'boolean',
     fn: (l) => l.list.length == 0,
   },
+  Range: {
+    params: [{name: 'start', type: 'number'}, {name: 'end', type: 'number'}],
+    returns: 'list',
+    fn: (start, end) => {
+      if (!Number.isInteger(start.value) || !Number.isInteger(start.value)) {
+        return { error: "start and end must be integers" };
+      }
+      let a = start.value;
+      let b = end.value;
+      if (a > b) {
+        return { error: "start must be less than end" };
+      }
+      return Array(b-a).fill(0).map((_, i) => value2object.number(i + a)).reverse();
+    },
+  },
 };
 
 let Errors = [];
