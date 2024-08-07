@@ -3,19 +3,23 @@
     <meta charset="UTF-8">
     <link rel="stylesheet" href="https://unpkg.com/simpledotcss/simple.min.css">
     <style>
-:root {
-  --code: white;
-  --bg: #212121;
-  --accent-bg: #2b2b2b;
-  --text: #dcdcdc;
-  --text-light: #ababab;
-  --accent: #ffb300;
-  --accent-hover: #ffe099;
-  --accent-text: var(--bg);
-  --code: #f06292;
-  --preformatted: #ccc;
-  --disabled: #111;
-}
+    :root {
+      --code: white;
+      --bg: #212121;
+      --accent-bg: #2b2b2b;
+      --text: #dcdcdc;
+      --text-light: #ababab;
+      --accent: #ffb300;
+      --accent-hover: #ffe099;
+      --accent-text: var(--bg);
+      --code: #f06292;
+      --preformatted: #ccc;
+      --disabled: #111;
+    }
+    body {
+      grid-template-columns: 1fr min(65rem,95%) 1fr;
+      font-size: 1rem;
+    }
     </style>
     <title>Cognate Playground</title>
   </head>
@@ -31,19 +35,96 @@
       <small>A fully client-side interactive playground for the Cognate programming language.</small>
     </header>
     <main>
-      <div>
-        <select id="select-example" name="example" style="">
-          <option value="custom" selected>Custom</option>
-          <option value="hanoi">Hanoi</option>
-          <option value="math">Math</option>
-          <option value="stack">Stack</option>
-        </select>
-        <textarea id="input" style="font-family: var(--mono-font); padding: .7rem 1rem; height: 20rem; resize: vertical" placeholder="Print &quot;Hello, World!&quot;"></textarea>
-        <pre><p style="color: var(--text-light); margin-top: 0">Output:</p><code id="output" style="line-height: 1;"></code></pre>
-        <pre><p style="color: var(--text-light); margin-top: 0">Stack:</p><code id="output-debug" style="line-height: 1;"></code></pre>
-        <pre><p style="color: var(--text-light); margin-top: 0">Errors:</p><code id="output-error" style="line-height: 1;"></code></pre>
+      <style>
+      .container select {
+        width: 100%;
+      }
+
+      .container textarea {
+        min-height: 22rem;
+        font-family: var(--mono-font);
+        padding: .7rem 1rem;
+        resize: none;
+        margin-bottom: 0;
+        resize: vertical;
+      }
+
+      .container pre p {
+        color: var(--text-light);
+        margin-top: 0;
+      }
+
+      pre code {
+        line-height: 1;
+      }
+
+      @media (min-width: 800px) {
+        .container {
+          height: 40rem;
+          display: grid;
+          justify-items: stretch;
+          align-items: stretch;
+          justify-content: stretch;
+          align-content: stretch;
+          grid-template-areas:
+            "input output"
+            "input output"
+            "input output"
+            "input output"
+            "input output"
+            "input output"
+            "input stack"
+            "input errors"
+            "input errors"
+            "select errors";
+          grid-template-columns: repeat(2, 1fr);
+          grid-template-rows: repeat(10, 1fr);
+          row-gap: .5rem;
+          column-gap: .5rem;
+        }
+
+        .container pre, .container select, .container textarea {
+          margin-top: 0;
+          margin-bottom: 0;
+          height: 100%;
+        }
+
+        .container textarea {
+          resize: none;
+        }
+
+        .container div {
+          height: 100%;
+          align-self: stretch;
+          justify-self: stretch;
+        }
+      }
+      </style>
+      <div class="container">
+        <div style="grid-area: select;">
+          <select id="select-example" name="example">
+            <option value="custom" selected>Custom</option>
+            <option value="hanoi">Hanoi</option>
+            <option value="math">Math</option>
+            <option value="stack">Stack</option>
+          </select>
+        </div>
+        <div style="grid-area: input">
+          <textarea id="input" placeholder="Print &quot;Hello, World!&quot;"></textarea>
+        </div>
+        <div style="grid-area: output">
+          <pre><p>Output:</p><code id="output"></code></pre>
+        </div>
+        <div style="grid-area: stack">
+          <pre><p>Stack:</p><code id="output-debug"></code></pre>
+        </div>
+        <div style="grid-area: errors">
+          <pre><p>Errors:</p><code id="output-error"></code></pre>
+        </div>
+      </div>
+      <div style="margin-top: 1rem;">
         <details><summary>Tree</summary>
-          <pre><code id="output-tree" style="line-height: 1;"></code></pre>
+          <pre><code id="output-tree"></code></pre>
         </details>
       </div>
     </main>
@@ -78,6 +159,7 @@ fetch("prelude.cog")
   .then((res) => res.text())
   .then((text) => {
     Prelude = text;
+    redraw();
   })
   .catch((e) => console.error(e));
 
@@ -165,7 +247,7 @@ function redrawErrors() {
     html += Errors.map((item) => `<li>${item}</li>`).join("");
     html += "</ol>";
   }
-  $outputError.setHTMLUnsafe(html);
+  $outputError.innerHTML = html;
 }
 
 function redraw() {
@@ -177,8 +259,8 @@ function redraw() {
   result = parse(preludeTree, env);
   if (Errors.length > 0) {
     redrawErrors();
-    $outputDebug.setHTMLUnsafe(result.debug);
-    $outputError.setHTMLUnsafe("<p>Parsing of prelude failed!</p>" + $outputError.innerHTML)
+    $outputDebug.innerHTML = result.debug;
+    $outputError.innerHTML = "<p>Parsing of prelude failed!</p>" + $outputError.innerHTML;
     return;
   }
   console.log("--------");
@@ -187,8 +269,8 @@ function redraw() {
   const tree = parser.parse($input.value);
   draw_tree(tree);
   result = parse(tree, env);
-  $outputDebug.setHTMLUnsafe(result.debug);
-  $output.setHTMLUnsafe(result.output);
+  $outputDebug.innerHTML = result.debug;
+  $output.innerHTML = result.output;
   redrawErrors();
 }
 
@@ -746,52 +828,6 @@ function process(stack, op, initEnv, scoped) {
   return {output: output, stack: op, error: error, updates: updates};
 }
 
-function walk(tree) {
-  const cursor = tree.walk();
-  let output = "";
-  let indent = 0;
-  let visitedChildren = false;
-
-  while (true) {
-    // Name
-    let name;
-    if (cursor.nodeIsMissing) {
-      name = `MISSING ${cursor.nodeType}`;
-    } else if (cursor.nodeIsNamed) {
-      name = cursor.nodeType;
-    }
-
-    if (!visitedChildren) {
-      // Output
-      if (name) {
-        output += `${'  '.repeat(indent)}${name}\n`
-      }
-
-      // Visit children
-      if (cursor.gotoFirstChild()) {
-        indent++;
-      } else {
-        visitedChildren = true;
-      }
-    } else {
-      // Visit next node
-      if (cursor.gotoNextSibling()) {
-        visitedChildren = false;
-      } else if (cursor.gotoParent()) {
-        indent--;
-        visitedChildren = true;
-      } else {
-        // Nothing else to visit
-        break;
-      }
-    }
-  }
-  
-  cursor.delete();
-
-  $output.setHTMLUnsafe(output);
-}
-
 function draw_tree(tree) {
   const cursor = tree.walk();
 
@@ -879,7 +915,7 @@ function draw_tree(tree) {
 
   cursor.delete();
 
-  $outputTree.setHTMLUnsafe(rows.join("\n"));
+  $outputTree.innerHTML = rows.join("\n");
 }
 
 //////////
