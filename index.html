@@ -220,12 +220,16 @@ function textMarked(text) {
   return `<span style='color: var(--marked)'>${text}</span>`;
 }
 
+function normalizeIdentifier(name) {
+  return name[0].toUpperCase() + name.substr(1).toLowerCase();
+}
+
 const token2object = {
   number: token => ({ type: 'number', value: Number.parseFloat(token) }),
   string: token => ({ type: 'string', value: token.slice(1, token.length-1) }),
   boolean: token => ({ type: 'boolean', value: (token == 'True') }),
-  identifier: token => ({ type: 'identifier', value: token }),
-  symbol: token => ({ type: 'symbol', value: token.slice(1) }),
+  identifier: token => ({ type: 'identifier', value: normalizeIdentifier(token) }),
+  symbol: token => ({ type: 'symbol', value: token.slice(1).toLowerCase() }),
   block: body => ({ type: 'block', body: body, env: {} }),
 };
 
@@ -233,7 +237,9 @@ const value2object = {
   number: value => ({ type: 'number', value: value }),
   string: value => ({ type: 'string', value: value }),
   boolean: value => ({ type: 'boolean', value: value ? true : false }),
-  identifier: value => ({ type: 'identifier', value: value }),
+  // Is this ever needed?
+  identifier: value => ({ type: 'identifier', value: normalizeIdentifier(value) }),
+  // And this.
   symbol: value => ({ type: 'symbol', value: value }),
   function: block => ({ type: 'function', body: block.body, env: block.env }),
 };
