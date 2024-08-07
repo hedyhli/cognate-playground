@@ -38,19 +38,14 @@ Def Times (
 );
 
 ~~ TODO: I/O
+
 ~
 Def With (
 	Let Fp be Open;
 	Do Swap Fp;
 	Close Fp
 );
-
-
-Def Reverse (
-	Let L be List!;
-	Empty ; For each in L ( Push )
-);
-
+~
 
 Def For (
 	Let L;
@@ -59,6 +54,11 @@ Def For (
 		Do B First L;
 		For each in Rest L do B;
 	)
+);
+
+Def Reverse (
+	Let L be List!;
+	Empty ; For each in L ( Push )
 );
 
 Def Fold (
@@ -79,7 +79,6 @@ Def Filter (
 	);
 	Reverse;
 );
-~
 
 Def Min as (
 	Let A;
@@ -92,7 +91,7 @@ Def Max as (
 	Let B;
 	If < A B then A else B;
 );
-~
+
 Def Take-while (
 	Def P;
 	Let L;
@@ -137,7 +136,7 @@ Def Append (
 );
 
 Def Prepend ( Swap ; Append );
-~
+
 Def Case as (
 	Def Pred;
 	Def If-true;
@@ -148,7 +147,7 @@ Def Case as (
 		Do If B then (If-true X) else (If-false X)
 	);
 );
-~
+
 Def Sort (
 	Case (Empty?) ()
 	else (
@@ -160,4 +159,3 @@ Def Sort (
 		Append
 	);
 );
-~

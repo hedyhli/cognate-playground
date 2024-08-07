@@ -37,9 +37,10 @@ Implementation
 - [X] Support `Set` (temporarily) to update values from outer scope
 - [X] Function shadowing
 - [X] Fix lexical scoping
+- [X] Support `List`
 - [ ] Support hoisting
+- [ ] Allow shadowing things in the prelude and builtins
 - [ ] Support `Box` and a proper `Set`
-- [ ] Support `List`
 - [ ] Prevent stack overflows
 - [ ] Optimizations on the stack before parsing
 - [ ] Consider feasibility of transpiling to JS

@@ -242,6 +242,133 @@ const value2object = {
   // And this.
   symbol: value => ({ type: 'symbol', value: value }),
   function: block => ({ type: 'function', body: block.body, env: block.env }),
+  list: list => ({ type: 'list', list: list }),
+  any: anything => anything,
+};
+
+const Builtins = {
+  "+": {
+    params: [{name: 'operand', type: 'number'}, {name: 'operand', type: 'number'}],
+    returns: 'number',
+    fn: (a, b) => a.value + b.value,
+  },
+  "-": {
+    params: [{name: 'operand', type: 'number'}, {name: 'operand', type: 'number'}],
+    returns: 'number',
+    fn: (a, b) => b.value - a.value,
+  },
+  "/": {
+    params: [{name: 'operand', type: 'number'}, {name: 'operand', type: 'number'}],
+    returns: 'number',
+    fn: (a, b) => a.value == 0 ? { error: "division by zero" } : b.value / a.value,
+  },
+  "*": {
+    params: [{name: 'operand', type: 'number'}, {name: 'operand', type: 'number'}],
+    returns: 'number',
+    fn: (a, b) => a.value * b.value,
+  },
+  Modulo: {
+    params: [{name: 'operand', type: 'number'}, {name: 'operand', type: 'number'}],
+    returns: 'number',
+    fn: (a, b) => a.value == 0 ? { error: "modulo by zero" } : b.value % a.value,
+  },
+  "==": {
+    params: [{name: 'operand', type: 'any'}, {name: 'operand', type: 'any'}],
+    returns: 'boolean',
+    fn: (a, b) => {
+      if (a.type != b.type)
+        return { error: "left and right operands be of the same type" };
+      return a.value === b.value;
+    },
+  },
+  "!=": {
+    params: [{name: 'operand', type: 'any'}, {name: 'operand', type: 'any'}],
+    returns: 'boolean',
+    fn: (a, b) => {
+      if (a.type != b.type)
+        return { error: "left and right operands be of the same type" };
+      return a.value !== b.value;
+    }
+  },
+  ">": {
+    params: [{name: 'operand', type: 'number'}, {name: 'operand', type: 'number'}],
+    returns: 'boolean',
+    fn: (a, b) => b.value > a.value,
+  },
+  "<": {
+    params: [{name: 'operand', type: 'number'}, {name: 'operand', type: 'number'}],
+    returns: 'boolean',
+    fn: (a, b) => b.value < a.value,
+  },
+  "<=": {
+    params: [{name: 'operand', type: 'number'}, {name: 'operand', type: 'number'}],
+    returns: 'boolean',
+    fn: (a, b) => b.value <= a.value,
+  },
+  ">=": {
+    params: [{name: 'operand', type: 'number'}, {name: 'operand', type: 'number'}],
+    returns: 'boolean',
+    fn: (a, b) => b.value >= a.value,
+  },
+  Not: {
+    params: [{name: 'operand', type: 'boolean'}],
+    returns: 'boolean',
+    fn: (a) => !a.value,
+  },
+  And: {
+    params: [{name: 'operand', type: 'boolean'}, {name: 'operand', type: 'boolean'}],
+    returns: 'boolean',
+    fn: (a, b) => a.value && b.value,
+  },
+  Or: {
+    params: [{name: 'operand', type: 'boolean'}, {name: 'operand', type: 'boolean'}],
+    returns: 'boolean',
+    fn: (a, b) => a.value || b.value,
+  },
+  Xor: {
+    params: [{name: 'operand', type: 'boolean'}, {name: 'operand', type: 'boolean'}],
+    returns: 'boolean',
+    fn: (a, b) => a.value != b.value,
+  },
+  Push: {
+    params: [{name: 'item to push', type: 'any'}, {name: 'list to push to', type: 'list'}],
+    returns: 'list',
+    fn: (item, l) => {
+      let newList = [...l.list];
+      newList.push(item);
+      return newList;
+    }
+  },
+  First: {
+    params: [{name: 'list', type: 'list'}],
+    returns: 'any',
+    fn: (l) => {
+      if (l.list.length == 0) {
+        return { error: 'attempt to get first item of empty list' };
+      }
+      return l.list[l.list.length-1];
+    }
+  },
+  Rest: {
+    params: [{name: 'list', type: 'list'}],
+    returns: 'list',
+    fn: (l) => {
+      if (l.list.length == 0) {
+        return { error: 'attempt to get rest of empty list' };
+      }
+      return [...l.list].splice(0, l.list.length-1);
+    }
+  },
+  Empty: {
+    params: [],
+    returns: 'list',
+    fn: () => [],
+  },
+  "Empty?": {
+    params: [{name: 'list', type: 'list'}],
+    returns: 'boolean',
+    fn: (l) => l.list.length == 0,
+  },
 };
 
 let Errors = [];
@@ -301,6 +428,8 @@ function _repr(item) {
       return `"${escape(item.value)}"`;
     case 'symbol':
       return `\\${escape(item.value)}`;
+    case 'list':
+      return "(" + [...item.list].reverse().map(_repr).join(", ") + ")"
     default:
       return textLight(`(unknown item of type ${textMarked(escape(item.type))})`);
   }
@@ -386,7 +515,7 @@ function parse(tree, env) {
 
       let inside = stack[stack.length-1];
       stack.splice(stack.length-1, 1);
-      inside = inside.reverse();
+      inside.reverse();
 
       for(let i = 0; i < inside.length; i ++) {
         let item = inside[i];
@@ -474,6 +603,8 @@ function process(stack, op, initEnv, scoped) {
         return escape(item.value);
       case 'boolean':
         return textMarked(item.value ? 'True' : 'False');
+      case 'list':
+        return "(" + [...item.list].reverse().map(resolve).join(", ") + ")"
       default:
         error = `unknown item of type ${textMarked(escape(item.type))}, value ${textMarked(escape(item))}`;
         return undefined;
@@ -492,11 +623,34 @@ function process(stack, op, initEnv, scoped) {
     if (item == undefined) {
       return undefined;
     }
-    if (item.type == type) {
+    if (type == 'any' || item.type == type) {
       return item;
     }
     error = `expected ${type}, got ${item.type}`;
     return undefined;
+  }
+
+  function handleBuiltin(fnName) {
+    const {params, returns, fn} = Builtins[fnName];
+    let args = [];
+    for(let i = 0; i < params.length; i++) {
+      let param = params[i];
+      let arg = expect(exists(op.pop(), param.name), param.type);
+      if (arg == undefined) {
+        return undefined;
+      }
+      args.push(arg);
+    }
+    let ret = fn(...args);
+    // NOTE: fn must not return undefined.
+    // Either return
+    // - a JS object with error field, or
+    // - a value suitable for value2object[returns field]
+    if (ret.error != undefined) {
+      error = ret.error;
+      return undefined;
+    }
+    op.push(value2object[returns](ret));
   }
 
   for (let s = 0; s < stack.length; s++) {
@@ -562,16 +716,16 @@ function process(stack, op, initEnv, scoped) {
             env[a.value].env[a.value] = env[a.value];
             break;
           }
-          case 'Print': {
-            while (op.length > 0) {
-              let str = resolve(op.pop());
-              if (str != undefined) {
-                output += `${str} `;
-              } else {
-                break;
-              }
+          case 'List': {
+            let block = expect(exists(op.pop(), 'block'), 'block');
+            // TODO: Ok to not spread env here?
+            let list = [];
+            let result = process(block.body, list, block.env, true);
+            if (result.error != "") {
+              error = `in ${textMarked('List')}: ${result.error}`;
+              break;
             }
-            output += "\n"
+            op.push(value2object.list(list));
             break;
           }
           case 'Do': {
@@ -583,128 +737,20 @@ function process(stack, op, initEnv, scoped) {
               error = `in ${textMarked('Do')}: ${do_result.error}`;
               break;
             }
-            // // Update variables from 'Set' calls.
-            // let keys = Object.keys(do_result.updates);
-            // for (let k = 0; k < keys.length; k++) {
-            //   let name = keys[k];
-            //   if (env[name] != undefined) {
-            //     env[name] = do_result.updates[name];
-            //   }
-            // }
-            // updates = {...updates, ...do_result.updates};
             op = do_result.stack;
             output += do_result.output;
             break;
           }
-          case '+': {
-            let a = expect(exists(op.pop(), 'operand'), 'number');
-            let b;
-            if (a != undefined) {
-              b = expect(exists(op.pop(), 'operand'), 'number');
-              if (b != undefined)
-                op.push(value2object.number(a.value + b.value));
+          case 'Print': {
+            while (op.length > 0) {
+              let str = resolve(op.pop());
+              if (str != undefined) {
+                output += `${str} `;
+              } else {
+                break;
+              }
             }
-            break;
-          }
-          case '-': {
-            let a = expect(exists(op.pop(), 'operand'), 'number');
-            let b;
-            if (a) {
-              b = expect(exists(op.pop(), 'operand'), 'number');
-              if (b)
-                op.push(value2object.number(b.value - a.value));
-            }
-            break;
-          }
-          case '*': {
-            let a = expect(exists(op.pop(), 'operand'), 'number');
-            let b;
-            if (a) {
-              b = expect(exists(op.pop(), 'operand'), 'number');
-              if (b)
-                op.push(value2object.number(a.value * b.value));
-            }
-            break;
-          }
-          case '/': {
-            let a = expect(exists(op.pop(), 'operand'), 'number');
-            let b;
-            if (a) {
-              b = expect(exists(op.pop(), 'operand'), 'number');
-              if (b)
-                op.push(value2object.number(b.value / a.value));
-            }
-            break;
-          }
-          case 'Modulo': {
-            let a = expect(exists(op.pop(), 'operand'), 'number');
-            let b;
-            if (a) {
-              b = expect(exists(op.pop(), 'operand'), 'number');
-              if (b)
-                op.push(value2object.number(b.value % a.value));
-            }
-            break;
-          }
-          case '==': {
-            let a = expect(exists(op.pop(), 'operand'), 'number');
-            let b;
-            if (a == undefined)
-              break;
-            b = expect(exists(op.pop(), 'operand'), 'number');
-            if (b == undefined)
-              break;
-            op.push(value2object.boolean(a.value == b.value));
-            break;
-          }
-          case '!=': {
-            let a = expect(exists(op.pop(), 'operand'), 'number');
-            if (a == undefined)
-              break;
-            let b = expect(exists(op.pop(), 'operand'), 'number');
-            if (b == undefined)
-              break;
-            op.push(value2object.boolean(a.value != b.value));
-            break;
-          }
-          case '>': {
-            let a = expect(exists(op.pop(), 'operand'), 'number');
-            if (a == undefined)
-              break;
-            let b = expect(exists(op.pop(), 'operand'), 'number');
-            if (b == undefined)
-              break;
-            op.push(value2object.boolean(b.value > a.value));
-            break;
-          }
-          case '<': {
-            let a = expect(exists(op.pop(), 'operand'), 'number');
-            if (a == undefined)
-              break;
-            let b = expect(exists(op.pop(), 'operand'), 'number');
-            if (b == undefined)
-              break;
-            op.push(value2object.boolean(b.value < a.value));
-            break;
-          }
-          case '>=': {
-            let a = expect(exists(op.pop(), 'operand'), 'number');
-            if (a == undefined)
-              break;
-            let b = expect(exists(op.pop(), 'operand'), 'number');
-            if (b == undefined)
-              break;
-            op.push(value2object.boolean(b.value >= a.value));
-            break;
-          }
-          case '<=': {
-            let a = expect(exists(op.pop(), 'operand'), 'number');
-            if (a == undefined)
-              break;
-            let b = expect(exists(op.pop(), 'operand'), 'number');
-            if (b == undefined)
-              break;
-            op.push(value2object.boolean(b.value <= a.value));
+            output += "\n"
             break;
           }
           case 'Number?': {
@@ -720,8 +766,10 @@ function process(stack, op, initEnv, scoped) {
             break;
           }
           case 'Number!':
+          case 'Symbol!':
           case 'String!':
           case 'Block!':
+          case 'List!':
           case 'Boolean!': {
             let a = exists(op[op.length-1], 'operand');
             let type = item.value.slice(0, item.value.length-1).toLowerCase();
@@ -733,42 +781,6 @@ function process(stack, op, initEnv, scoped) {
             let a = exists(op[op.length-1], 'operand');
             if (a != undefined && !(a.type == 'number' && Number.isInteger(a.value)))
               error = "integer assertion failed"
-            break;
-          }
-          case 'Not': {
-            let a = expect(exists(op.pop(), 'boolean operand'), 'boolean');
-            if (a != undefined)
-              op.push(value2object.boolean(!a.value));
-            break;
-          }
-          case 'And': {
-            let a = expect(exists(op.pop(), 'boolean operand'), 'boolean');
-            if (a == undefined)
-              break
-            let b = expect(exists(op.pop(), 'boolean operand'), 'boolean');
-            if (b == undefined)
-              break
-            op.push(value2object.boolean(a.value && b.value));
-            break;
-          }
-          case 'Or': {
-            let a = expect(exists(op.pop(), 'boolean operand'), 'boolean');
-            if (a == undefined)
-              break
-            let b = expect(exists(op.pop(), 'boolean operand'), 'boolean');
-            if (b == undefined)
-              break
-            op.push(value2object.boolean(a.value || b.value));
-            break;
-          }
-          case 'Xor': {
-            let a = expect(exists(op.pop(), 'boolean operand'), 'boolean');
-            if (a == undefined)
-              break
-            let b = expect(exists(op.pop(), 'boolean operand'), 'boolean');
-            if (b == undefined)
-              break
-            op.push(value2object.boolean(a.value != b.value));
             break;
           }
           case 'If': {
@@ -803,27 +815,16 @@ function process(stack, op, initEnv, scoped) {
             newDefs[a.value] = true;
             break;
           }
-          case 'Set': {
-            // let a = expect(exists(op.pop(), 'identifier'), 'identifier');
-            // if (a == undefined)
-            //   break;
-            // let b = op.pop();
-            // if (b == undefined) {
-            //   error = `in ${textMarked('Set')}: value expected`;
-            //   break;
-            // }
-            // if (getVar(a) == undefined) {
-            //   error = `attempt to set undefined variable ${textMarked(name)}`;
-            // } else {
-            //   updates[a.value] = b;
-            //   env[a.value] = b;
-            // }
-            break;
-          }
           default: {
-            let a = getVar(item);
-            if (a != undefined) {
-              op.push(a);
+            if (Builtins[item.value] != undefined) {
+              // TODO: Allow shadowing builtins and preludes
+              handleBuiltin(item.value);
+              break;
+            } else {
+              let a = getVar(item);
+              if (a != undefined) {
+                op.push(a);
+              }
             }
             break;
           }
