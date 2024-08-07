@@ -718,6 +718,8 @@ function process(stack, op, initEnv, scoped) {
           }
           case 'List': {
             let block = expect(exists(op.pop(), 'block'), 'block');
+            if (block == undefined)
+              break;
             // TODO: Ok to not spread env here?
             let list = [];
             let result = process(block.body, list, block.env, true);
