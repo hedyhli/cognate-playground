@@ -227,7 +227,7 @@ function normalizeIdentifier(name) {
 const token2object = {
   number: token => ({ type: 'number', value: Number.parseFloat(token) }),
   string: token => ({ type: 'string', value: token.slice(1, token.length-1) }),
-  boolean: token => ({ type: 'boolean', value: (token == 'True') }),
+  boolean: token => ({ type: 'boolean', value: (token.toLowerCase() == 'true') }),
   identifier: token => ({ type: 'identifier', value: normalizeIdentifier(token) }),
   symbol: token => ({ type: 'symbol', value: token.slice(1).toLowerCase() }),
   block: body => ({ type: 'block', body: body, env: {} }),
