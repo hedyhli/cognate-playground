@@ -230,7 +230,7 @@ const token2object = {
   boolean: token => ({ type: 'boolean', value: (token.toLowerCase() == 'true') }),
   identifier: token => ({ type: 'identifier', value: normalizeIdentifier(token) }),
   symbol: token => ({ type: 'symbol', value: token.slice(1).toLowerCase() }),
-  block: body => ({ type: 'block', body: body, env: {} }),
+  block: (body, predec) => ({ type: 'block', body: body, env: {}, predeclares: predec }),
 };
 
 const value2object = {
@@ -241,9 +241,26 @@ const value2object = {
   identifier: value => ({ type: 'identifier', value: normalizeIdentifier(value) }),
   // And this.
   symbol: value => ({ type: 'symbol', value: value }),
-  function: block => ({ type: 'function', body: block.body, env: block.env }),
   list: list => ({ type: 'list', list: list }),
   any: anything => anything,
+};
+
+const bindObject = {
+  number: (predec, number) => { predec.type = 'number'; predec.value = number.value },
+  string: (predec, string) => { predec.type = 'string'; predec.value = string.value },
+  boolean: (predec, boolean) => { predec.type = 'boolean'; predec.value = boolean.value },
+  symbol: (predec, symbol) => { predec.type = 'symbol'; predec.value = symbol.value },
+  function: (predec, block) => {
+    predec.type = 'function';
+    predec.block = block;
+  },
+  block: (predec, block) => {
+    predec.type = 'block';
+    predec.body = block.body;
+    predec.env = block.env;
+    predec.predeclares = block.predeclares;
+  },
+  list: (predec, list) => { predec.type = 'list'; predec.list = list.list },
 };
 
 const Builtins = {
@@ -369,6 +386,22 @@ const Builtins = {
     returns: 'boolean',
     fn: (l) => l.list.length == 0,
   },
+  "Index": {
+    params: [{name: 'index', type: 'number'}, {name: 'list', type: 'list'}],
+    returns: 'any',
+    fn: (i, l) => {
+      if (!Number.isInteger(i.value)) {
+        return { error: "index must be an integer" };
+      }
+      let tmp = [...l.list].reverse();
+      return tmp[i.value] != undefined ? tmp[i.value] : { error: "index out of bounds" };
+    }
+  },
+  "Length": {
+    params: [{name: 'list', type: 'list'}],
+    returns: 'number',
+    fn: (l) => l.list.length,
+  },
   Range: {
     params: [{name: 'start', type: 'number'}, {name: 'end', type: 'number'}],
     returns: 'list',
@@ -472,10 +505,9 @@ function _printArr(arr) {
 
 function parse(tree, env) {
   const root = tree.rootNode;
-  let output = "";
   let bail = false;
 
-  function inner(node, stack) {
+  function inner(node, currentBlock) {
     let inStmt = false;
     let inBlock = false;
 
@@ -496,23 +528,21 @@ function parse(tree, env) {
       return;
     }
 
-    // output += " -" + name + "\n"
-
     switch (name) {
       case "block":
         inBlock = true;
-        stack.push(token2object.block([]));
+        currentBlock.body.push(token2object.block([], []));
         break;
       case "statement":
         inStmt = true;
-        stack.push([]);
+        currentBlock.body.push(token2object.block([], currentBlock.predeclares));
         break;
+      case "identifier":
       case "number":
       case "string":
       case "boolean":
       case "symbol":
-      case "identifier":
-        stack.push(token2object[name](node.text));
+        currentBlock.body.push(token2object[name](node.text));
         break;
       case "source_file":
         break;
@@ -525,65 +555,60 @@ function parse(tree, env) {
     }
 
     if (inStmt) {
-      let pushto = stack[stack.length-1];
+      let pushto = currentBlock.body[currentBlock.body.length-1];
       node.children.forEach((child, c) => inner(child, pushto));
 
-      let inside = stack[stack.length-1];
-      stack.splice(stack.length-1, 1);
-      inside.reverse();
-
-      for(let i = 0; i < inside.length; i ++) {
-        let item = inside[i];
-        let previous = inside[i-1];
-        if (item.type == 'identifier' && ['Def', 'Let', 'Set'].includes(item.value)) {
+      let stmt = currentBlock.body.pop();
+      for(let i = stmt.body.length-1; i>=0; i--) {
+        let item = stmt.body[i];
+        let previous = stmt.body[i+1];
+        if (item.type == 'identifier' && ['Def', 'Let'].includes(item.value)) {
           if (!(previous && previous.type == 'identifier')) {
-            let error = `syntax error: ${textMarked(item.value)} must follow an identifier`;
-            if (previous)
-              error += `, got ${previous.type}`;
-            appendError(error);
+            appendError(`syntax error: identifier expected after ${item.value}`);
             bail = true;
             return;
+          } else {
+            currentBlock.predeclares.push(previous.value);
           }
         }
-        stack.push(item)
+        currentBlock.body.push(item);
+        previous = item;
       }
 
     } else if (inBlock) {
-      let pushto = stack[stack.length-1].body;
+      let pushto = currentBlock.body[currentBlock.body.length-1];
       node.children.forEach((child, c) => inner(child, pushto));
 
     } else {
-      node.children.forEach((child, c) => inner(child, stack));
+      // TODO: string escapes
+      node.children.forEach((child, c) => inner(child, currentBlock));
     }
-    // output += `:: ${printArr(outstack)}\n`
   }
 
-  let outstack = [];
-  inner(root, outstack);
+  let rootBlock = token2object.block([], []);
+  rootBlock.env = env;
+
+  inner(root, rootBlock);
 
   if (bail) {
-    return { debug: output, output: '' };
+    return { debug: '', output: '' };
   }
 
-  let res = process(outstack, [], env);
+  let res = process(rootBlock, []);
 
   if (res.error != "") {
     appendError(res.error);
   }
 
-  output += `${_printArr(res.stack)}\n`;
+  let output = `${_printArr(res.stack)}\n`;
 
   return { debug: output, output: res.output }
 }
 
-function process(stack, op, initEnv, scoped) {
-  let env = scoped ? {...initEnv} : initEnv;
-  let updates = {};
 
-  // Variables defined in this block;
-  // [name: string]: bool
-  // TODO: Is this necessary when we have both `initEnv` and `env`?
-  let newDefs = {};
+function process(currentBlock, op, scoped) {
+  let env = scoped ? {...currentBlock.env} : currentBlock.env;
+  let updates = {};
 
   let output = "";
   let error = "";
@@ -662,16 +687,29 @@ function process(stack, op, initEnv, scoped) {
     // - a JS object with error field, or
     // - a value suitable for value2object[returns field]
     if (ret.error != undefined) {
-      error = ret.error;
+      error = `in ${textMarked(fnName)}: ` + ret.error;
       return undefined;
     }
     op.push(value2object[returns](ret));
   }
 
-  for (let s = 0; s < stack.length; s++) {
-    let item = stack[s];
+  // Begin parsing the block.
+  let predeclares = {};
+  for (let i = 0; i < currentBlock.predeclares.length; i++) {
+    let name = currentBlock.predeclares[i];
+    if (predeclares[name] != undefined) {
+      error = `${name}: cannot shadow in the same block`;
+      return {output: output, stack: op, error: error, updates: updates};
+    }
+    predeclares[name] = true;
+    env[name] = { type: '_predeclared' };
+    // TODO: clear the .predeclares array?
+  }
+
+  for (let s = 0; s < currentBlock.body.length; s++) {
+    let item = currentBlock.body[s];
     // console.log(item.value || item, _printArr(op));
-    let next = stack[s+1];
+    let next = currentBlock.body[s+1];
     if (error != "") {
       break;
     }
@@ -690,20 +728,11 @@ function process(stack, op, initEnv, scoped) {
         }
         if (env[item.value] && env[item.value].type == 'function') {
           // Defined, and is a function.
-          let call_result = process(env[item.value].body, op, env[item.value].env, true);
+          let call_result = process(env[item.value].block, op, true);
           if (call_result.error != "") {
             error = `in ${textMarked(item.value)}: ` + call_result.error;
             break;
           }
-          // // Update variables from 'Set' calls.
-          // let keys = Object.keys(call_result.updates);
-          // for (let k = 0; k < keys.length; k++) {
-          //   let name = keys[k];
-          //   if (env[name] != undefined) {
-          //     env[name] = call_result.updates[name];
-          //   }
-          // }
-          // updates = {...updates, ...call_result.updates};
           op = call_result.stack;
           output += call_result.output;
           continue;
@@ -721,14 +750,7 @@ function process(stack, op, initEnv, scoped) {
               error = `in ${textMarked('Def')}: ` + error;
               break;
             }
-            // if (env[a.value] != undefined && newDefs[a.value]) {
-            //   error = `in ${textMarked('Def')}: cannot shadow in the same block`;
-            //   break;
-            // }
-            newDefs[a.value] = true;
-            env[a.value] = value2object.function(b);
-            // Include current declaration in block
-            env[a.value].env[a.value] = env[a.value];
+            bindObject.function(env[a.value], b);
             break;
           }
           case 'List': {
@@ -737,7 +759,7 @@ function process(stack, op, initEnv, scoped) {
               break;
             // TODO: Ok to not spread env here?
             let list = [];
-            let result = process(block.body, list, block.env, true);
+            let result = process(block, list, true);
             if (result.error != "") {
               error = `in ${textMarked('List')}: ${result.error}`;
               break;
@@ -749,7 +771,7 @@ function process(stack, op, initEnv, scoped) {
             // Blocks create a new scope.
             let block = expect(exists(op.pop(), 'block'), 'block');
             // TODO: Ok to not spread env here?
-            let do_result = process(block.body, op, block.env, true);
+            let do_result = process(block, op, true);
             if (do_result.error != "") {
               error = `in ${textMarked('Do')}: ${do_result.error}`;
               break;
@@ -824,12 +846,7 @@ function process(stack, op, initEnv, scoped) {
               error = `in ${textMarked('Let')}: expected value to set`;
               break;
             }
-            if (env[a.value] != undefined && newDefs[a.value]) {
-              error = `in ${textMarked('Let')}: cannot shadow in the same block`;
-              break;
-            }
-            env[a.value] = b;
-            newDefs[a.value] = true;
+            bindObject[b.type](env[a.value], b);
             break;
           }
           default: {

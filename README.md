@@ -38,8 +38,8 @@ Implementation
 - [X] Function shadowing
 - [X] Fix lexical scoping
 - [X] Support `List`
-- [ ] Support hoisting
-- [ ] Allow shadowing things in the prelude and builtins
+- [X] Support hoisting
+- [X] Allow shadowing things in the prelude and builtins
 - [ ] Support `Box` and a proper `Set`
 - [ ] Prevent stack overflows
 - [ ] Optimizations on the stack before parsing
