@@ -40,6 +40,10 @@ Implementation
 - [X] Support `List`
 - [X] Support hoisting
 - [X] Allow shadowing things in the prelude and builtins
+- [ ] Fix `Print`; Add `Show`
+- [ ] Update Prelude from upstream
+- [ ] Add `Stack`
+- [ ] Add string methods
 - [ ] Support `Box` and a proper `Set`
 - [ ] Prevent stack overflows
 - [ ] Optimizations on the stack before parsing
