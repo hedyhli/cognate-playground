@@ -9,3 +9,6 @@ up:
 
 wasm:
   cp ../tree-sitter-cognate/tree-sitter-cognate.wasm .
+
+prelude:
+  cp ../cognate/src/prelude.cog .
