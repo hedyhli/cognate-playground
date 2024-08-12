@@ -2,10 +2,11 @@ default:
   @just -l
 
 deploy:
-  rsync -rv prelude.cog index.html tree-sitter* pgs.sh:/cognate-playground
+  pnpm build
+  rsync -rv dist/* pgs.sh:/cognate-playground
 
 up:
-  python3 -m http.server
+  pnpm dev
 
 wasm:
   cp ../tree-sitter-cognate/tree-sitter-cognate.wasm .
