@@ -1,13 +1,12 @@
 Def Drop as ( Let X );
+
 Def Swap as ( Let X ; Let Y ; Y X );
+
+Def Do as ( Def F ; F );
+
 Def Any? ( True Drop );
 Def Twin as (Let X ; X X);
 Def Triplet as (Twin ; Twin);
-
-~~ TODO: Show, List (and hence most of these below)
-
-~~ Def Puts ( Put Fold ( Join Show ) from "" over Reverse List);
-~~ Def Prints ( Print Fold ( Join Show ) from "" over Reverse List);
 
 Def When as (
 	Let Cond;
@@ -34,31 +33,39 @@ Def Until (
 Def Times (
 	Let I be Integer!;
 	Def B;
-	( When >= 0 I then ( B ; Do Times - 1 I (B) ) )
+
+	(
+		I;
+		While (Twin ;> 0) (
+			Let I;
+			B;
+			- 1 I;
+		);
+		Drop;
+	)
 );
 
-~~ TODO: I/O
 
-~
-Def With (
-	Let Fp be Open;
-	Do Swap Fp;
-	Close Fp
+~~ Def With (
+~~ 	Let Fp be Open;
+~~ 	Do Swap Fp;
+~~ 	Close Fp
+~~ );
+
+
+Def Reverse (
+	Fold ( Push ) from Empty over List!;
 );
-~
+
 
 Def For (
+	~~ Tail recursive;
 	Let L;
 	Let B;
 	When Not Empty? L (
 		Do B First L;
 		For each in Rest L do B;
 	)
-);
-
-Def Reverse (
-	Let L be List!;
-	Empty ; For each in L ( Push )
 );
 
 Def Fold (
@@ -68,10 +75,13 @@ Def Fold (
 	I ; For each in L do B;
 );
 
+Def Puts ( Put Fold ( Join Show ) from "" over Reverse List);
+Def Prints ( Print Fold ( Join Show ) from "" over Reverse List);
+
 Def Filter (
 	Def Predicate;
 	Let L;
-	Empty;
+    Empty;
 	For each in L (
 		Let I;
 		Let R be Predicate I;
@@ -120,7 +130,7 @@ Def All (
 	)
 );
 
-Def None (
+Def None ( ~~ Opposite of All
 	Def P;
 	Let L;
 	All ( Not P ) of L;
@@ -148,7 +158,7 @@ Def Case as (
 	);
 );
 
-Def Sort (
+Def Sort
 	Case (Empty?) ()
 	else (
 		Let L;
@@ -158,4 +168,79 @@ Def Sort (
 		Push Pivot;
 		Append
 	);
+
+Def Map (
+	Def Pred;
+	Let L be a List!;
+
+	Do If Empty? L ( L )
+	else (
+		Let X be First of L;
+		Let Res be Pred X;
+
+		return Push Res to Map (Pred) over Rest of L;
+	);
+);
+
+Def Discard (
+	Let N be Integer!;
+	Do Times N (
+		Let L;
+		When Empty? L ( Error "Cannot Discard more elements than in list" );
+		get Rest of L;
+	) starting with List!
+);
+
+Def Take (
+	Let N be Integer!;
+	Let Li be List!;
+
+	Reverse List (
+		Do Times N (
+			Let L;
+			When Empty? L ( Error "Cannot Take more elements than in list" );
+			First L;
+			Rest L;
+		) starting with Li;
+		Drop
+	)
+);
+
+Def Length (
+	Let L be List!;
+	Do If Empty? L then ( 0 ) else ( Length of the Rest of L ; + 1 )
+);
+
+Def Index (
+	Let N be Integer!;
+	Let L be List!;
+
+	Do If Zero? N ( return First element of L )
+	else (
+		When Empty? L ( Error "Index is beyond end of list" );
+		Index - 1 N of Rest of L
+	);
+);
+
+Def Range (
+	Let Start be Number!;
+	Let End be Number!;
+
+	When > End Start
+	(
+		Error Join Join Join "Invalid range " Show Start "..." Show End;
+	);
+
+	Reverse List (
+		Start;
+		While (Triplet ; < End) ( + 1 );
+		Drop; Drop;
+	)
+);
+
+Def Assert (
+	Let Assertion be String!;
+	Let Result be Boolean!;
+
+	Unless Result ( Error Join Join "Failed assertion: '" Assertion "'" );
 );

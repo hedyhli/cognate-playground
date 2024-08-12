@@ -177,7 +177,7 @@ const ExamplePresets = {
 
    Unless Zero? N (
       Move - 1 N discs from A via C to B;
-      Print "disc" N ":" A "-->" C;
+      Prints ("disc " N " : " A " --> " C);
       Move - 1 N discs from B via A to C;
    )
 );
@@ -212,6 +212,11 @@ function escape(string) {
         : string || '';
 }
 
+const Style = {
+  marked: 'color: var(--marked)',
+  light: 'color: var(--text-light)',
+};
+
 function textLight(text) {
   return `<span style='color: var(--text-light)'>${text}</span>`;
 }
@@ -224,6 +229,16 @@ function normalizeIdentifier(name) {
   return name[0].toUpperCase() + name.substr(1).toLowerCase();
 }
 
+const Output = {
+  clear: () => { $output.innerHTML = "" },
+  add: (str) => {
+    $output.innerHTML += str.style ? `<span style='${str.style}'>${escape(str.value)}</span>` : escape(str.value);
+  },
+  newline: () => {
+    $output.innerHTML += "\n";
+  }
+};
+
 const token2object = {
   number: token => ({ type: 'number', value: Number.parseFloat(token) }),
   string: token => ({ type: 'string', value: token.slice(1, token.length-1) }),
@@ -235,7 +250,7 @@ const token2object = {
 
 const value2object = {
   number: value => ({ type: 'number', value: value }),
-  string: value => ({ type: 'string', value: value }),
+  string: (value, style) => ({ type: 'string', value: value, style: style }),
   boolean: value => ({ type: 'boolean', value: value ? true : false }),
   // Is this ever needed?
   identifier: value => ({ type: 'identifier', value: normalizeIdentifier(value) }),
@@ -386,17 +401,17 @@ const Builtins = {
     returns: 'boolean',
     fn: (l) => l.list.length == 0,
   },
-  "Index": {
-    params: [{name: 'index', type: 'number'}, {name: 'list', type: 'list'}],
-    returns: 'any',
-    fn: (i, l) => {
-      if (!Number.isInteger(i.value)) {
-        return { error: "index must be an integer" };
-      }
-      let tmp = [...l.list].reverse();
-      return tmp[i.value] != undefined ? tmp[i.value] : { error: "index out of bounds" };
-    }
-  },
+  // "Index": {
+  //   params: [{name: 'index', type: 'number'}, {name: 'list', type: 'list'}],
+  //   returns: 'any',
+  //   fn: (i, l) => {
+  //     if (!Number.isInteger(i.value)) {
+  //       return { error: "index must be an integer" };
+  //     }
+  //     let tmp = [...l.list].reverse();
+  //     return tmp[i.value] != undefined ? tmp[i.value] : { error: "index out of bounds" };
+  //   }
+  // },
   "Length": {
     params: [{name: 'list', type: 'list'}],
     returns: 'number',
@@ -416,6 +431,16 @@ const Builtins = {
       }
       return Array(b-a).fill(0).map((_, i) => value2object.number(i + a)).reverse();
     },
+  },
+  Show: {
+    params: [{name: 'argument', type: 'any'}],
+    returns: 'string',
+    fn: (item) => resolve(item),
+  },
+  Join: {
+    params: [{name: 'string', type: 'string'}, {name: 'string', type: 'string'}],
+    returns: 'string',
+    fn: (a, b) => a.value + b.value,
   },
 };
 
@@ -437,6 +462,7 @@ function redrawErrors() {
 
 function redraw() {
   const env = {};
+  Output.clear();
   let result;
 
   const preludeTree = parser.parse(Prelude);
@@ -455,7 +481,6 @@ function redraw() {
   draw_tree(tree);
   result = parse(tree, env);
   $outputDebug.innerHTML = result.debug;
-  $output.innerHTML = result.output;
   redrawErrors();
 }
 
@@ -464,6 +489,7 @@ function printArr(arr) {
   return arr.map((item) => (item.type == 'block') ? _printArr(item.body) : _repr(item)).join("\n");
 }
 
+// Object to string for displaying the stack & debugging
 function _repr(item) {
   switch (item.type) {
     case 'identifier':
@@ -480,6 +506,46 @@ function _repr(item) {
       return "(" + [...item.list].reverse().map(_repr).join(", ") + ")"
     default:
       return textLight(`(unknown item of type ${textMarked(escape(item.type))})`);
+  }
+}
+
+// Object to string for the output
+function resolve(item) {
+  if (item == undefined) {
+    return undefined;
+  }
+
+  switch (item.type) {
+    case 'block':
+      return value2object.string('(block)', Style.marked);
+    case 'string':
+      if (item.style) // This string is already styled by Show/resolve()
+        return item;
+      // Otherwise, fallthrough
+    case 'number':
+    case 'symbol':
+      return value2object.string(item.value);
+    case 'boolean':
+      return value2object.string(item.value ? 'True' : 'False', Style.marked);
+    case 'list':
+      /// XXX: Does not support unknown item type within the map call.
+      return `(${[...item.list].reverse().map(item => resolve(item).value).join(', ')})`
+      // TODO: This can't be used with `Show` because it should
+      // return a single string object and it can't currently supported
+      // styling of different segments.
+      //
+      // let output = [value2object.string("(")];
+      // [...item.list].reverse().forEach((item) => {
+      //   output.push(resolve(item));
+      //   output.push(value2object.string(", "));
+      // })
+      // output.pop();
+      // output.push(value2object.string(")"));
+      // return output;
+    default:
+      return {
+        error: `unknown item of type ${textMarked(escape(item.type))}, value ${textMarked(escape(item))}`
+      };
   }
 }
 
@@ -591,7 +657,7 @@ function parse(tree, env) {
   inner(root, rootBlock);
 
   if (bail) {
-    return { debug: '', output: '' };
+    return { debug: '' };
   }
 
   let res = process(rootBlock, []);
@@ -602,7 +668,7 @@ function parse(tree, env) {
 
   let output = `${_printArr(res.stack)}\n`;
 
-  return { debug: output, output: res.output }
+  return { debug: output }
 }
 
 
@@ -610,7 +676,6 @@ function process(currentBlock, op, scoped) {
   let env = scoped ? {...currentBlock.env} : currentBlock.env;
   let updates = {};
 
-  let output = "";
   let error = "";
 
   function getVar(item) {
@@ -624,30 +689,6 @@ function process(currentBlock, op, scoped) {
       }
     } else {
       return item;
-    }
-  }
-
-  function resolve(item) {
-    if (item == undefined) {
-      return undefined;
-    }
-
-    switch (item.type) {
-      case 'block':
-        return textMarked('(block)');
-      case 'number':
-        return item.value;
-      case 'string':
-        return escape(item.value);
-      case 'symbol':
-        return escape(item.value);
-      case 'boolean':
-        return textMarked(item.value ? 'True' : 'False');
-      case 'list':
-        return "(" + [...item.list].reverse().map(resolve).join(", ") + ")"
-      default:
-        error = `unknown item of type ${textMarked(escape(item.type))}, value ${textMarked(escape(item))}`;
-        return undefined;
     }
   }
 
@@ -690,7 +731,9 @@ function process(currentBlock, op, scoped) {
       error = `in ${textMarked(fnName)}: ` + ret.error;
       return undefined;
     }
-    op.push(value2object[returns](ret));
+    if (returns !== null) {
+      op.push(ret.type == returns ? ret : value2object[returns](ret));
+    }
   }
 
   // Begin parsing the block.
@@ -699,7 +742,7 @@ function process(currentBlock, op, scoped) {
     let name = currentBlock.predeclares[i];
     if (predeclares[name] != undefined) {
       error = `${name}: cannot shadow in the same block`;
-      return {output: output, stack: op, error: error, updates: updates};
+      return {stack: op, error: error, updates: updates};
     }
     predeclares[name] = true;
     env[name] = { type: '_predeclared' };
@@ -734,7 +777,6 @@ function process(currentBlock, op, scoped) {
             break;
           }
           op = call_result.stack;
-          output += call_result.output;
           continue;
         }
         switch (item.value) {
@@ -770,6 +812,9 @@ function process(currentBlock, op, scoped) {
           case 'Do': {
             // Blocks create a new scope.
             let block = expect(exists(op.pop(), 'block'), 'block');
+            if (block == undefined) {
+              break;
+            }
             // TODO: Ok to not spread env here?
             let do_result = process(block, op, true);
             if (do_result.error != "") {
@@ -777,19 +822,40 @@ function process(currentBlock, op, scoped) {
               break;
             }
             op = do_result.stack;
-            output += do_result.output;
+            break;
+          }
+          case 'Stack': {
+            let list = [...op];
+            op.push(value2object.list(list));
+            break;
+          }
+          case 'Clear': {
+            while (op.length > 0) {
+              op.pop();
+            }
             break;
           }
           case 'Print': {
-            while (op.length > 0) {
-              let str = resolve(op.pop());
-              if (str != undefined) {
-                output += `${str} `;
-              } else {
-                break;
-              }
+            let item = exists(op.pop(), 'value');
+            let str = resolve(item);
+            if (str != undefined) {
+              Output.add(str);
+              Output.newline();
             }
-            output += "\n"
+            break;
+          }
+          case 'Put': {
+            let item = exists(op.pop(), 'value');
+            let str = resolve(item);
+            if (str != undefined) {
+              Output.add(str);
+            }
+            break;
+          }
+          case 'Error': {
+            let msg = expect(exists(op.pop(), 'error message'), 'string');
+            if (msg != undefined)
+              error = msg.value;
             break;
           }
           case 'Number?': {
@@ -870,7 +936,7 @@ function process(currentBlock, op, scoped) {
     };
   }
 
-  return {output: output, stack: op, error: error, updates: updates};
+  return {stack: op, error: error, updates: updates};
 }
 
 function draw_tree(tree) {
