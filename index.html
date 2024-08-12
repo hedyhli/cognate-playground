@@ -47,6 +47,7 @@
         resize: none;
         margin-bottom: 0;
         resize: vertical;
+        tab-size: 4;
       }
 
       .container div {
@@ -109,8 +110,9 @@
           <select id="select-example" name="example">
             <option value="custom" selected>Custom</option>
             <option value="hanoi">Hanoi</option>
-            <option value="math">Math</option>
-            <option value="stack">Stack</option>
+            <option value="fizzbuzz">Fizzbuzz</option>
+            <option value="primes">Primes</option>
+            <option value="fib">Fibonacci</option>
           </select>
         </div>
         <div style="grid-area: input">
@@ -126,11 +128,6 @@
           <pre><p>Errors:</p><code id="output-error"></code></pre>
         </div>
       </div>
-      <div style="margin-top: 1rem;">
-        <details><summary>Tree</summary>
-          <pre><code id="output-tree"></code></pre>
-        </details>
-      </div>
     </main>
     <script src="tree-sitter.js"></script>
     <script type="module">
@@ -139,7 +136,6 @@ const $selectExample = document.getElementById("select-example")
 const $output = document.getElementById("output")
 const $outputError = document.getElementById("output-error")
 const $outputDebug = document.getElementById("output-debug")
-const $outputTree = document.getElementById("output-tree")
 
 const STORAGE_KEY = "cognate-playground";
 const Store = {
@@ -168,29 +164,53 @@ fetch("prelude.cog")
   .catch((e) => console.error(e));
 
 const ExamplePresets = {
-  custom: `Print "custom here"`,
+  custom: ``,
   hanoi: `Def Move discs as (
-   Let N be the number of discs;
-   Let A be the first rod;
-   Let B be the second rod;
-   Let C be the third rod;
+	Let N be the Number! of discs;
+	Let A be the first rod;
+	Let B be the second rod;
+	Let C be the third rod;
 
-   Unless Zero? N (
-      Move - 1 N discs from A via C to B;
-      Prints ("disc " N " : " A " --> " C);
-      Move - 1 N discs from B via A to C;
-   )
+	Unless Zero? N (
+		Move - 1 N discs from A via C to B;
+		Prints ("disc " N " : " A " --> " C);
+		Move - 1 N discs from B via A to C;
+	)
 );
 
-show steps to Move 3 discs from \\X via \\Y to \\Z;`,
-  math: `Print - 3 5;
-Print > 10 11;
-Print == 2 Modulo 3 20;`,
-  stack: `Print Twin 0;
-Print Twin Twin 0;
-Print Drop 1 2 3 4 5;
-Print * Twin 4;
-Print * * Triplet 4;`,
+Move 3 discs from \X via \Y to \Z;`,
+  fizzbuzz: `Def Fizzbuzz (
+	Let N be the current Number!;
+	Def Multiple as ( Zero? Modulo Swap N );
+	Print
+		If Multiple of 15 then "fizzbuzz"
+		If Multiple of 3  then "fizz"
+		If Multiple of 5  then "buzz"
+		   else N
+);
+
+For each in Range 1 to 100 ( Fizzbuzz );`,
+  primes: `Def Factor (Zero? Modulo Swap);
+
+Def Primes (
+	Let U be the upper bound Number!;
+	initialize an Empty list;
+	For Range 2 to U (
+		Let I be our potential prime;
+		Let Primes are the found primes;
+		Let To-check be Take-while (<= Sqrt I) Primes;
+		When None (Factor of I) To-check
+			(Append List (I)) to Primes;
+	)
+);
+
+Print Primes up to 100;`,
+  fib: `Def Fib
+	Case (< 3) then (1 Drop)
+	else (Let N ; Fib of - 1 N ; + Fib of - 2 N);
+
+Put "The 20th fibonacci number is: ";
+Print Fib 20;`
 };
 
 ////////
@@ -279,6 +299,45 @@ const bindObject = {
 };
 
 const Builtins = {
+  // Value checks
+  "Zero?": {
+    params: [{name: 'value', type: 'any'}],
+    returns: 'boolean',
+    fn: a => a.type == 'number' && a.value == 0,
+  },
+  "Zero!": {
+    params: [{name: 'zero', type: 'number'}],
+    returns: 'number',
+    fn: a => a.value == 0 ? a : { error: "zero assertion failed" },
+  },
+  "Integer!": {
+    params: [{name: 'integer', type: 'number'}],
+    returns: 'number',
+    fn: a => Number.isInteger(a.value) ? a : { error: "zero assertion failed" },
+  },
+  "Integer?": {
+    params: [{name: 'value', type: 'any'}],
+    returns: 'boolean',
+    fn: a => a.type == 'number' && Number.isInteger(a.value),
+  },
+
+  // Meta
+  If: {
+    params: [
+      {name: 'condition', type: 'boolean'},
+      {name: "'then' clause", type: 'any'},
+      {name: "'else' clause", type: 'any'},
+    ],
+    returns: 'any',
+    fn: (cond, then, fallback) => cond.value ? then : fallback,
+  },
+  Error: {
+    params: [{name: 'error message', type: 'string'}],
+    returns: null,
+    fn: msg => ({ error: msg.value }),
+  },
+
+  // Operators
   "+": {
     params: [{name: 'operand', type: 'number'}, {name: 'operand', type: 'number'}],
     returns: 'number',
@@ -303,6 +362,11 @@ const Builtins = {
     params: [{name: 'operand', type: 'number'}, {name: 'operand', type: 'number'}],
     returns: 'number',
     fn: (a, b) => a.value == 0 ? { error: "modulo by zero" } : b.value % a.value,
+  },
+  Sqrt: {
+    params: [{name: 'operand', type: 'number'}],
+    returns: 'number',
+    fn: a => a.value < 0 ? { error: "sqrt of a negative number" } : Math.sqrt(a.value),
   },
   "==": {
     params: [{name: 'operand', type: 'any'}, {name: 'operand', type: 'any'}],
@@ -401,36 +465,10 @@ const Builtins = {
     returns: 'boolean',
     fn: (l) => l.list.length == 0,
   },
-  // "Index": {
-  //   params: [{name: 'index', type: 'number'}, {name: 'list', type: 'list'}],
-  //   returns: 'any',
-  //   fn: (i, l) => {
-  //     if (!Number.isInteger(i.value)) {
-  //       return { error: "index must be an integer" };
-  //     }
-  //     let tmp = [...l.list].reverse();
-  //     return tmp[i.value] != undefined ? tmp[i.value] : { error: "index out of bounds" };
-  //   }
-  // },
   "Length": {
     params: [{name: 'list', type: 'list'}],
     returns: 'number',
     fn: (l) => l.list.length,
-  },
-  Range: {
-    params: [{name: 'start', type: 'number'}, {name: 'end', type: 'number'}],
-    returns: 'list',
-    fn: (start, end) => {
-      if (!Number.isInteger(start.value) || !Number.isInteger(start.value)) {
-        return { error: "start and end must be integers" };
-      }
-      let a = start.value;
-      let b = end.value;
-      if (a > b) {
-        return { error: "start must be less than end" };
-      }
-      return Array(b-a).fill(0).map((_, i) => value2object.number(i + a)).reverse();
-    },
   },
   Show: {
     params: [{name: 'argument', type: 'any'}],
@@ -478,13 +516,17 @@ function redraw() {
 
   Errors = [];
   const tree = parser.parse($input.value);
-  draw_tree(tree);
   result = parse(tree, env);
   $outputDebug.innerHTML = result.debug;
   redrawErrors();
+
+  // Save input after process finishes to prevent inability to exit potential
+  // loop where program cannot terminate without editing source code.
+  Store.saveInput($input.value);
 }
 
-// Return a string representation of a nested array.
+// Return a string representation of a nested array, with each root element on
+// another line.
 function printArr(arr) {
   return arr.map((item) => (item.type == 'block') ? _printArr(item.body) : _repr(item)).join("\n");
 }
@@ -529,7 +571,7 @@ function resolve(item) {
       return value2object.string(item.value ? 'True' : 'False', Style.marked);
     case 'list':
       /// XXX: Does not support unknown item type within the map call.
-      return `(${[...item.list].reverse().map(item => resolve(item).value).join(', ')})`
+      return value2object.string(`(${[...item.list].reverse().map(item => resolve(item).value).join(', ')})`);
       // TODO: This can't be used with `Show` because it should
       // return a single string object and it can't currently supported
       // styling of different segments.
@@ -549,6 +591,7 @@ function resolve(item) {
   }
 }
 
+// Represent a stack in a single line.
 function _printArr(arr) {
   let output = "";
 
@@ -569,6 +612,11 @@ function _printArr(arr) {
   return `[${output.slice(0, output.length-2)}]`;
 }
 
+// Parse a syntax tree into a nested block to be processed, flattening
+// statement items in reverse order as per how Cognate operates the stack
+// within statements.
+//
+// The entire program has a root "block" representing the outer scope.
 function parse(tree, env) {
   const root = tree.rootNode;
   let bail = false;
@@ -672,10 +720,10 @@ function parse(tree, env) {
 }
 
 
+// Execute a block within a possibly `scoped` environment, with an initial
+// stack `op`.
 function process(currentBlock, op, scoped) {
   let env = scoped ? {...currentBlock.env} : currentBlock.env;
-  let updates = {};
-
   let error = "";
 
   function getVar(item) {
@@ -736,19 +784,20 @@ function process(currentBlock, op, scoped) {
     }
   }
 
-  // Begin parsing the block.
+  // Predeclare names
   let predeclares = {};
   for (let i = 0; i < currentBlock.predeclares.length; i++) {
     let name = currentBlock.predeclares[i];
     if (predeclares[name] != undefined) {
       error = `${name}: cannot shadow in the same block`;
-      return {stack: op, error: error, updates: updates};
+      return {stack: op, error: error};
     }
     predeclares[name] = true;
     env[name] = { type: '_predeclared' };
     // TODO: clear the .predeclares array?
   }
 
+  // Execute the block
   for (let s = 0; s < currentBlock.body.length; s++) {
     let item = currentBlock.body[s];
     // console.log(item.value || item, _printArr(op));
@@ -758,13 +807,15 @@ function process(currentBlock, op, scoped) {
     }
     switch (item.type) {
       case 'block': {
+        // Relying on shallow-copying to support the bind step for
+        // hoisting. (See `bindObject`.)
         item.env = {...env};
         op.push(item);
         break;
       }
       case 'identifier':
         if (next != undefined && next.type == 'identifier') {
-          if (next.value == 'Def' || next.value == 'Let' || next.value == 'Set') {
+          if (['Def', 'Let', 'Set'].includes(next.value)) {
             op.push(item);
             continue;
           }
@@ -773,33 +824,52 @@ function process(currentBlock, op, scoped) {
           // Defined, and is a function.
           let call_result = process(env[item.value].block, op, true);
           if (call_result.error != "") {
-            error = `in ${textMarked(item.value)}: ` + call_result.error;
+            error = `in ${textMarked(item.value)}: ${call_result.error}`;
             break;
           }
           op = call_result.stack;
           continue;
         }
         switch (item.value) {
+          // Binding
           case 'Def': {
             // This check is technically done already during parsing.
-            let a = expect(exists(op.pop(), `identifier`), 'identifier');
+            let a = expect(exists(op.pop(), 'identifier'), 'identifier');
             if (a == undefined) {
-              error = `in ${textMarked('Def')}: ` + error;
+              error = `in ${textMarked('Def')}: ${error}`;
               break;
             }
             let b = expect(exists(op.pop(), `function body`), 'block');
             if (b == undefined) {
-              error = `in ${textMarked('Def')}: ` + error;
+              error = `in ${textMarked('Def')}: ${error}`;
               break;
             }
             bindObject.function(env[a.value], b);
             break;
           }
+          case 'Let': {
+            let a = expect(exists(op.pop(), 'identifier'), 'identifier');
+            if (a == undefined) {
+              error = `in ${textMarked('Let')}: ${error}`;
+              break;
+            }
+            let b = op.pop();
+            if (b == undefined) {
+              error = `in ${textMarked('Let')}: expected value to set`;
+              break;
+            }
+            bindObject[b.type](env[a.value], b);
+            break;
+          }
+
+          // Blocks
           case 'List': {
             let block = expect(exists(op.pop(), 'block'), 'block');
-            if (block == undefined)
+            if (block == undefined) {
+              error = `in ${textMarked('List')}: ${error}`;
               break;
-            // TODO: Ok to not spread env here?
+            }
+
             let list = [];
             let result = process(block, list, true);
             if (result.error != "") {
@@ -809,21 +879,8 @@ function process(currentBlock, op, scoped) {
             op.push(value2object.list(list));
             break;
           }
-          case 'Do': {
-            // Blocks create a new scope.
-            let block = expect(exists(op.pop(), 'block'), 'block');
-            if (block == undefined) {
-              break;
-            }
-            // TODO: Ok to not spread env here?
-            let do_result = process(block, op, true);
-            if (do_result.error != "") {
-              error = `in ${textMarked('Do')}: ${do_result.error}`;
-              break;
-            }
-            op = do_result.stack;
-            break;
-          }
+
+          // Stack
           case 'Stack': {
             let list = [...op];
             op.push(value2object.list(list));
@@ -835,12 +892,16 @@ function process(currentBlock, op, scoped) {
             }
             break;
           }
+
+          // I/O
           case 'Print': {
             let item = exists(op.pop(), 'value');
             let str = resolve(item);
             if (str != undefined) {
               Output.add(str);
               Output.newline();
+            } else {
+              error = `in ${textMarked('Print')}: ${error}`
             }
             break;
           }
@@ -849,25 +910,25 @@ function process(currentBlock, op, scoped) {
             let str = resolve(item);
             if (str != undefined) {
               Output.add(str);
+            } else {
+              error = `in ${textMarked('Print')}: ${error}`
             }
             break;
           }
-          case 'Error': {
-            let msg = expect(exists(op.pop(), 'error message'), 'string');
-            if (msg != undefined)
-              error = msg.value;
-            break;
-          }
-          case 'Number?': {
-            let a = exists(op.pop(), 'boolean operand');
+
+          // Types
+          case 'Number?':
+          case 'String?':
+          case 'Symbol?':
+          case 'Block?':
+          case 'List?':
+          case 'Boolean?': {
+            let a = exists(op[op.length-1], 'value');
+            let type = item.value.slice(0, item.value.length-1).toLowerCase();
             if (a != undefined)
-              op.push(value2object.boolean(a.type == 'number'));
-            break;
-          }
-          case 'Zero?': {
-            let a = expect(exists(op.pop(), 'operand'), 'number');
-            if (a != undefined)
-              op.push(value2object.boolean(a.value == 0));
+              op.push(value2object.boolean(a.type == type));
+            else
+              error = `in ${textMarked(item.value)}: ${error}`;
             break;
           }
           case 'Number!':
@@ -876,45 +937,13 @@ function process(currentBlock, op, scoped) {
           case 'Block!':
           case 'List!':
           case 'Boolean!': {
-            let a = exists(op[op.length-1], 'operand');
+            let a = exists(op[op.length-1], 'value');
             let type = item.value.slice(0, item.value.length-1).toLowerCase();
             if (a != undefined && a.type != type)
-              error = `${type} assertion failed`
+              error = `in ${textMarked(item.value)}: ${type} assertion failed`
             break;
           }
-          case 'Integer!': {
-            let a = exists(op[op.length-1], 'operand');
-            if (a != undefined && !(a.type == 'number' && Number.isInteger(a.value)))
-              error = "integer assertion failed"
-            break;
-          }
-          case 'If': {
-            let cond = expect(exists(op.pop(), "condition"), 'boolean');
-            if (cond == undefined)
-              break;
-            let then = exists(op.pop(), "'then' clause");
-            if (then == undefined)
-              break;
-            let fallback = exists(op.pop(), "'else' clause");
-            if (fallback == undefined)
-              break;
-            op.push(cond.value ? then : fallback);
-            break;
-          }
-          case 'Let': {
-            let a = expect(exists(op.pop(), 'identifier'), 'identifier');
-            if (a == undefined) {
-              error = `in ${textMarked('Let')}: ` + error;
-              break;
-            }
-            let b = op.pop();
-            if (b == undefined) {
-              error = `in ${textMarked('Let')}: expected value to set`;
-              break;
-            }
-            bindObject[b.type](env[a.value], b);
-            break;
-          }
+
           default: {
             if (Builtins[item.value] != undefined) {
               // TODO: Allow shadowing builtins and preludes
@@ -936,103 +965,12 @@ function process(currentBlock, op, scoped) {
     };
   }
 
-  return {stack: op, error: error, updates: updates};
-}
-
-function draw_tree(tree) {
-  const cursor = tree.walk();
-
-  let row = '';
-  const rows = [];
-  let finishedRow = false;
-  let visitedChildren = false;
-  let indentLevel = 0;
-
-  for (let i = 0;; i++) {
-    let displayName;
-    let nameColor = "var(--text)";
-
-    if (cursor.nodeIsMissing) {
-      displayName = `MISSING ${cursor.nodeType}`;
-      nameColor = "var(--marked)";
-    } else if (cursor.nodeIsNamed) {
-      displayName = cursor.nodeType;
-    }
-
-    if (displayName == "ERROR") {
-      nameColor = "var(--marked)";
-    }
-
-    if (visitedChildren) {
-      if (displayName) {
-        finishedRow = true;
-      }
-
-      let prev_type = cursor.nodeType;
-      let prev_text = cursor.nodeText;
-      let prev_start = cursor.startPosition;
-
-      if (cursor.gotoNextSibling()) {
-        visitedChildren = false;
-      } else if (cursor.gotoParent()) {
-        visitedChildren = true;
-        indentLevel--;
-
-        if (prev_type == "ERROR" && cursor.nodeType == "ERROR") {
-          Errors.push(`unexpected token: ${textMarked(prev_text)} ` + textLight(`(${prev_start.row}, ${prev_start.column})`));
-        }
-      } else {
-        // No parent and no sibling
-        break;
-      }
-    } else {
-      if (displayName) {
-        if (finishedRow) {
-          row += '</div>';
-          rows.push(row);
-          finishedRow = false;
-        }
-        const start = cursor.startPosition;
-        const end = cursor.endPosition;
-        const id = cursor.nodeId;
-        let fieldName = cursor.currentFieldName;
-        if (fieldName) {
-          fieldName = `<span style="color: lightskyblue;">${fieldName}</span>: `;
-        } else {
-          fieldName = '';
-        }
-        const parenLeft = textLight("(")
-        const parenRight = textLight(")")
-        row = `<div style='margin: 0 0'>${'  '.repeat(indentLevel)}${fieldName}${parenLeft}<span style='color: ${nameColor}' data-id=${id} data-range="${start.row},${start.column},${end.row},${end.column}">${displayName}</span>${parenRight}`;
-        finishedRow = true;
-
-        if (cursor.nodeIsMissing) {
-          Errors.push(`missing: ${textMarked(cursor.nodeType)} ` + textLight(`(${start.row}, ${start.column})`))
-        }
-      }
-
-      if (cursor.gotoFirstChild()) {
-        visitedChildren = false;
-        indentLevel++;
-      } else {
-        visitedChildren = true;
-      }
-    }
-  }
-  if (finishedRow) {
-    row += '</div>';
-    rows.push(row);
-  }
-
-  cursor.delete();
-
-  $outputTree.innerHTML = rows.join("\n");
+  return {stack: op, error: error};
 }
 
 //////////
 
 $input.addEventListener("input", function (event) {
-  Store.saveInput($input.value);
   redraw();
 });
 
