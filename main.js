@@ -1,3 +1,4 @@
+// NOTE: This seems to produce wasm related errors:
 // import TreeSitter from 'web-tree-sitter';
 // import TSCognateURL from './public/tree-sitter-cognate.wasm?url';
 // import PreludeURL from './prelude.cog?url'
