@@ -1,2 +1,6 @@
 [*]
 indent_size = 2
+
+[*.cog]
+indent_style = tab
+indent_size = 4

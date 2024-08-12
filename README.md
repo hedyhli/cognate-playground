@@ -1,5 +1,7 @@
 # Cognate Playground
 
+Canonical instance: <https://cognate-playground.hedy.dev/>
+
 The goal is to build an interactive playground that remains fully client-side
 (i.e., rather than simply calling the official Cognate CLI in a sandboxed
 environment).
@@ -13,11 +15,12 @@ builtins from the C prelude.
 parser, and the the runtime written entirely in JavaScript.
 
 Files
-- index.html -- the entire app
-- tree-sitter.js, tree-sitter.wasm -- from tree-sitter releases
-- tree-sitter-cognate.wasm -- built from
+- index.html
+- main.js -- the entire app
+- `public/tree-sitter.{js,wasm}` -- from tree-sitter releases
+- `public/tree-sitter-cognate.wasm` -- built from
   [tree-sitter-cognate](https://github.com/hedyhli/tree-sitter-cognate)
-- prelude.cog -- definitions of various built-in functions. copied from the
+- `public/prelude.cog` -- definitions of various built-in functions. copied from the
   Cognate repo with only I/O builtins commented out. eventually it will simply
   link to the prelude.cog file from the Cognate repo.
 
