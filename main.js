@@ -2,8 +2,8 @@
 // import TreeSitter from 'web-tree-sitter';
 // import TSCognateURL from './public/tree-sitter-cognate.wasm?url';
 // import PreludeURL from './prelude.cog?url'
+import CM from './editor/editor.js';
 
-const $input = document.getElementById("input")
 const $selectExample = document.getElementById("select-example")
 const $output = document.getElementById("output")
 const $outputError = document.getElementById("output-error")
@@ -18,6 +18,8 @@ const Store = {
 };
 
 const App = {
+  // The select preset
+  selectionChange: false,
   prelude: '',
   fetchPrelude: () => {
     // TODO: Error message on failure.
@@ -25,7 +27,7 @@ const App = {
       .then((res) => res.text())
       .then((text) => {
         App.prelude = text;
-        redraw();
+        redraw(Store.getInput());
       })
       .catch((e) => console.error(e));
   },
@@ -41,7 +43,17 @@ const App = {
   },
   init: async () => {
     await App.ts.init();
-    $input.value = Store.getInput();
+    CM.setup(
+      Store.getInput(),
+      document.getElementById("input"),
+      (update) => {
+        if (update.docChanged) {
+          // Don't update Store if the code input changed due to a <select> change.
+          redraw(update.state.doc.toString(), !App.selectionChange);
+          App.selectionChange = false;
+        }
+      }
+    );
     $selectExample.value = "custom";
     App.fetchPrelude();
   },
@@ -380,7 +392,7 @@ const Builtins = {
   },
 };
 
-function redraw(edited) {
+function redraw(code, edited) {
   if (App.ts.parser == undefined || App.prelude == '') {
     return;
   }
@@ -412,7 +424,7 @@ function redraw(edited) {
   Errors = [];
 
   // Parse
-  const tree = App.ts.parser.parse($input.value);
+  const tree = App.ts.parser.parse(code);
   result = parse(tree, env);
   redrawErrors();
   if (result.bail) {
@@ -431,7 +443,7 @@ function redraw(edited) {
   // Save input after process finishes to prevent inability to exit potential
   // loop where program cannot terminate without editing source code.
   if (edited)
-    Store.saveInput($input.value);
+    Store.saveInput(code);
 }
 
 // Return a string representation of a nested array, with each root element on
@@ -612,9 +624,11 @@ function parse(tree, env) {
       let pushto = currentBlock.body[currentBlock.body.length-1];
       node.children.forEach((child, c) => inner(child, pushto));
 
+    } else if (node.type == 'source_file') {
+      node.children.forEach((child, c) => inner(child, currentBlock));
     } else {
       // TODO: string escapes
-      node.children.forEach((child, c) => inner(child, currentBlock));
+      // console.log(node.type, node.children.length, node.children.map((c) => c.text).join(" and "));
     }
   }
 
@@ -876,12 +890,11 @@ function process(currentBlock, op, scoped) {
 
 //////////////////////////////////////////////////////////////////////
 
-$input.addEventListener("input", function (event) { redraw(true); });
-
 $selectExample.addEventListener("change", function () {
   let key = $selectExample.value;
-  $input.value = key == "custom" ? Store.getInput() : ExamplePresets[key];
-  redraw();
+  let newContent = key == "custom" ? Store.getInput() : ExamplePresets[key];
+  App.selectionChange = true;
+  CM.setText(newContent);
 });
 
 document.addEventListener("DOMContentLoaded", async function (event) {

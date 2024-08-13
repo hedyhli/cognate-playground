@@ -1,0 +1,52 @@
+@top SourceFile { semiSep<Statement> }
+
+Statement { (Identifier | literal | Block)+ }
+
+semiSep<content> { ("" | content | content (";" content)*) ";"? }
+
+Block { "(" semiSep<Statement> ")" }
+
+kw<term> { @extend[@name={term}]<Identifier, term> }
+
+Def { @extend<Identifier, "Def"> }
+
+@skip { InlineComment | MultilineComment | LineComment | space }
+
+@skip {} { String { '"' (StringEscape | stringContent)* stringEnd } }
+
+@local tokens {
+  StringEscape { "\\" $[abtnvfr\\"] }
+  stringEnd { '"' }
+  @else stringContent
+}
+
+literal { Number | Symbol | String | Boolean }
+
+@tokens {
+  space { @whitespace+ }
+
+  Number {
+    "-"? $[0-9]+ | "-"? $[0-9]+ "." $[0-9]+
+  }
+  Symbol {
+    "\\" $[a-zA-Z0-9-?!'+/*>=<^]+
+  }
+  Boolean {
+    "T" $[Rr] $[Uu] $[Ee] | "F" $[Aa] $[Ll] $[Ss] $[Ee]
+  }
+  Identifier {
+    $[A-Z-?!'+/*>=<^] $[a-zA-Z0-9-?!'+/*>=<^]*
+  }
+
+  @precedence { Number, Boolean, Identifier }
+
+  LineComment {
+    "~~" ![\r\n]*
+  }
+  InlineComment {
+    $[a-z] $[A-Za-z0-9-?!'+/*>=<^]*
+  }
+  MultilineComment {
+    "~" ![~]+ "~"
+  }
+}

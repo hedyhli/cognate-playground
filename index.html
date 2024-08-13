@@ -40,17 +40,7 @@
         width: 100%;
       }
 
-      .container textarea {
-        min-height: 22rem;
-        font-family: var(--mono-font);
-        padding: .7rem 1rem;
-        resize: none;
-        margin-bottom: 0;
-        resize: vertical;
-        tab-size: 4;
-      }
-
-      .container div {
+      .container .grid-item {
         overflow-x: auto;
       }
 
@@ -88,25 +78,31 @@
           column-gap: .5rem;
         }
 
-        .container pre, .container select, .container textarea {
+        .container pre, .container select, .container #input {
           margin-top: 0;
           margin-bottom: 0;
           height: 100%;
         }
 
-        .container textarea {
-          resize: none;
-        }
-
-        .container div {
+        .container .grid-item {
           height: 100%;
           align-self: stretch;
           justify-self: stretch;
         }
       }
+
+      .container #input-container {
+        background-color: var(--accent-bg);
+        border: 1px solid var(--border);
+        border-radius: var(--standard-border-radius);
+      }
+
+      .cm-editor {
+        height: 100%;
+      }
       </style>
       <div class="container">
-        <div style="grid-area: select;">
+        <div style="grid-area: select;" class="grid-item">
           <select id="select-example" name="example">
             <option value="custom" selected>Custom</option>
             <option value="hanoi">Hanoi</option>
@@ -115,16 +111,16 @@
             <option value="fib">Fibonacci</option>
           </select>
         </div>
-        <div style="grid-area: input">
-          <textarea id="input" placeholder="Print &quot;Hello, World!&quot;"></textarea>
+        <div style="grid-area: input" class="grid-item" id="input-container">
+          <div id="input"></div>
         </div>
-        <div style="grid-area: output">
+        <div style="grid-area: output" class="grid-item">
           <pre><p class="section-name">Output:</p><code id="output"></code></pre>
         </div>
-        <div style="grid-area: stack">
+        <div style="grid-area: stack" class="grid-item">
           <pre><p class="section-name">Stack:</p><code id="output-debug"></code></pre>
         </div>
-        <div style="grid-area: errors">
+        <div style="grid-area: errors" class="grid-item">
           <pre><p class="section-name">Errors:</p><code id="output-error"></code></pre>
         </div>
       </div>

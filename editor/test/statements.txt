@@ -1,0 +1,75 @@
+# Statement;
+
+Print "hi";
+
+==>
+
+SourceFile(Statement(Identifier,String))
+
+# Statement
+
+Def "hi"
+
+==>
+
+SourceFile(Statement(Identifier,String))
+
+# Statements;
+
+Print "hi";
+Print "hi";
+
+==>
+
+SourceFile(Statement(Identifier,String),Statement(Identifier,String))
+
+# Statements
+
+Print "hi";
+Print "hi"
+
+==>
+
+SourceFile(Statement(Identifier,String),Statement(Identifier,String))
+
+# Statement
+
+Print "hi"
+
+==>
+
+SourceFile(Statement(Identifier,String))
+
+# Block
+
+A ()
+
+==>
+
+SourceFile(Statement(Identifier,Block))
+
+# Block with statements
+
+A (B;);
+A (B);
+
+==>
+
+SourceFile(Statement(Identifier,Block(Statement(Identifier))),
+           Statement(Identifier,Block(Statement(Identifier))))
+
+# Literals
+
+0 1 1.2 -0 -00.10 TrUe FALSE
+
+==>
+
+SourceFile(Statement(Number,Number,Number,Number,Number,Boolean,Boolean))
+
+# String escapes
+
+"hi" "\"" "\a\b\c\d"
+
+==>
+
+SourceFile(Statement(String,String(StringEscape),String(StringEscape,StringEscape)))
