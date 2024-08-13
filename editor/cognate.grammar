@@ -6,10 +6,6 @@ semiSep<content> { ("" | content | content (";" content)*) ";"? }
 
 Block { "(" semiSep<Statement> ")" }
 
-kw<term> { @extend[@name={term}]<Identifier, term> }
-
-Def { @extend<Identifier, "Def"> }
-
 @skip { InlineComment | MultilineComment | LineComment | space }
 
 @skip {} { String { '"' (StringEscape | stringContent)* stringEnd } }

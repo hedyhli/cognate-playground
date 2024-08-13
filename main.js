@@ -49,6 +49,8 @@ const App = {
       (update) => {
         if (update.docChanged) {
           // Don't update Store if the code input changed due to a <select> change.
+          // TODO: Do it in a worker thread or some other asynchronous way to
+          // prevent blocking view updates.
           redraw(update.state.doc.toString(), !App.selectionChange);
           App.selectionChange = false;
         }
@@ -169,12 +171,12 @@ function normalizeIdentifier(name) {
   return name[0].toUpperCase() + name.substr(1).toLowerCase();
 }
 
-const token2object = {
-  number: token => ({ type: 'number', value: Number.parseFloat(token) }),
-  string: token => ({ type: 'string', value: token.slice(1, token.length-1) }),
-  boolean: token => ({ type: 'boolean', value: (token.toLowerCase() == 'true') }),
-  identifier: token => ({ type: 'identifier', value: normalizeIdentifier(token) }),
-  symbol: token => ({ type: 'symbol', value: token.slice(1).toLowerCase() }),
+const node2object = {
+  number: node => ({ type: 'number', value: Number.parseFloat(node.text), node: node }),
+  string: node => ({ type: 'string', value: node.text.slice(1, node.text.length-1), node: node }),
+  boolean: node => ({ type: 'boolean', value: (node.text.toLowerCase() == 'true'), node: node }),
+  identifier: node => ({ type: 'identifier', value: normalizeIdentifier(node.text), node: node }),
+  symbol: node => ({ type: 'symbol', value: node.text.slice(1).toLowerCase(), node: node }),
   block: (body, predec) => ({ type: 'block', body: body, env: {}, predeclares: predec }),
 };
 
@@ -207,6 +209,43 @@ const bindObject = {
   },
   list: (predec, list) => { predec.type = 'list'; predec.list = list.list },
 };
+
+// For syntax highlighting
+const Operators = {};
+"+ - * / > < == != >= <=".split(" ").forEach(op => { Operators[op] = true });
+const Keywords = {};
+[
+  "Def",
+  "Let",
+  "Set",
+  "For",
+  "While",
+  "If",
+  "Unless",
+  "When",
+  "Until"
+].forEach(kw => { Keywords[kw] = true });
+
+// Ones that are special-cased in `process`
+const SpecialSupportBuiltins = {};
+[
+  "Number?",
+  "Number!",
+  "Boolean?",
+  "Boolean!",
+  "List?",
+  "List!",
+  "Symbol?",
+  "Symbol!",
+  "Block?",
+  "Block!",
+  "Print",
+  "Show",
+  "Put",
+  "List",
+  "Stack",
+  "Clear",
+].forEach(name => { SpecialSupportBuiltins[name] = true });
 
 const Builtins = {
   // Value checks
@@ -411,7 +450,7 @@ function redraw(code, edited) {
     return
   }
   // Exec
-  result = process(result.rootBlock, []);
+  result = process(result.rootBlock, [], false);
   if (result.error != '') {
     appendError(result.error);
     redrawErrors();
@@ -425,13 +464,13 @@ function redraw(code, edited) {
 
   // Parse
   const tree = App.ts.parser.parse(code);
-  result = parse(tree, env);
+  result = parse(tree, env, true);
   redrawErrors();
   if (result.bail) {
     $outputError.innerHTML = "<p>Error during parsing!</p>" + $outputError.innerHTML;
   } else {
     // Exec
-    result = process(result.rootBlock, []);
+    result = process(result.rootBlock, [], false);
     $outputDebug.innerHTML = _printArr(result.stack);
     if (result.error != '') {
       appendError(result.error);
@@ -538,9 +577,12 @@ function resolve(item) {
 // within statements.
 //
 // The entire program has a root "block" representing the outer scope.
-function parse(tree, env) {
+function parse(tree, env, userCode) {
   const root = tree.rootNode;
   let bail = false;
+
+  let rootBlock = node2object.block([], []);
+  rootBlock.env = env;
 
   function inner(node, currentBlock) {
     let inStmt = false;
@@ -576,18 +618,29 @@ function parse(tree, env) {
     switch (name) {
       case "block":
         inBlock = true;
-        currentBlock.body.push(token2object.block([], []));
+        currentBlock.body.push(node2object.block([], []));
         break;
       case "statement":
         inStmt = true;
-        currentBlock.body.push(token2object.block([], currentBlock.predeclares));
+        currentBlock.body.push(node2object.block([], currentBlock.predeclares));
         break;
       case "identifier":
+        if (userCode) {
+          if (Keywords[node.text]) {
+            // definitions
+            CM.setMark(node, "keyword");
+          } else if (Operators[node.text]) {
+            CM.setMark(node, "operator");
+          } else if (Builtins[node.text] || rootBlock.env[node.text] || SpecialSupportBuiltins[node.text]) {
+            // builtins
+            CM.setMark(node, "builtin");
+          }
+        }
       case "number":
       case "string":
       case "boolean":
       case "symbol":
-        currentBlock.body.push(token2object[name](node.text));
+        currentBlock.body.push(node2object[name](node));
         break;
       case "source_file":
         break;
@@ -613,6 +666,9 @@ function parse(tree, env) {
             bail = true;
             return;
           } else {
+            if (userCode && item.value == 'Def') {
+              CM.setMark(previous.node, "function");
+            }
             currentBlock.predeclares.push(previous.value);
           }
         }
@@ -631,9 +687,6 @@ function parse(tree, env) {
       // console.log(node.type, node.children.length, node.children.map((c) => c.text).join(" and "));
     }
   }
-
-  let rootBlock = token2object.block([], []);
-  rootBlock.env = env;
 
   inner(root, rootBlock);
   return { rootBlock: rootBlock, bail: bail }
@@ -865,7 +918,7 @@ function process(currentBlock, op, scoped) {
           }
 
           default: {
-            if (Builtins[item.value] != undefined) {
+            if (Builtins[item.value]) {
               // TODO: Allow shadowing builtins and preludes
               handleBuiltin(item.value);
               break;

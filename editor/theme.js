@@ -2,7 +2,7 @@ import {EditorView} from "@codemirror/view";
 import {HighlightStyle, syntaxHighlighting} from "@codemirror/language";
 import {tags as t} from "@lezer/highlight";
 
-const c = {
+export const c = {
   chalky: "#e5c07b",
   coral: "#e06c75",
   cyan: "#56b6c2",
