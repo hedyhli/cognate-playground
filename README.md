@@ -54,5 +54,13 @@ Implementation
 Others
 - [X] Presets of example code
 - [X] Save input in localstorage
-- [ ] Live syntax highlighting with tree-sitter
-- [ ] More informative errors (with token span info from tree-sitter)
+- [X] Live syntax highlighting
+- [ ] [perf] Collect all tokens to be highlighted, and dispatch them in batch
+- [ ] [perf] Avoid re-evaluating the prelude each time
+- [ ] [perf] Send edits to tree-sitter instead
+- [ ] [perf] Consider using a worker thread for `redraw`, or some other way
+      to prevent blocking input, such as merging several successive edits in
+      one, or implementing a `Run` button.
+- [ ] Highlight references of functions in scope
+- [ ] Show parser errors inline in the editor
+- [ ] More informative runtime errors
