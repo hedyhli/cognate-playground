@@ -21,12 +21,14 @@ const App = {
   // The select preset
   selectionChange: false,
   prelude: '',
+  preludeEnv: {},
   fetchPrelude: () => {
     // TODO: Error message on failure.
     fetch("prelude.cog")
       .then((res) => res.text())
       .then((text) => {
         App.prelude = text;
+        execPrelude();
         redraw(Store.getInput());
       })
       .catch((e) => console.error(e));
@@ -431,19 +433,16 @@ const Builtins = {
   },
 };
 
-function redraw(code, edited) {
+function execPrelude() {
   if (App.ts.parser == undefined || App.prelude == '') {
     return;
   }
 
-  const env = {};
-  Output.clear();
-  let result;
-
   // Parse
   const preludeTree = App.ts.parser.parse(App.prelude);
   Errors = [];
-  result = parse(preludeTree, env);
+  App.preludeEnv = {};
+  let result = parse(preludeTree, App.preludeEnv);
   redrawErrors();
   if (result.bail) {
     $outputError.innerHTML = "<p>Error when parsing the prelude!</p>" + $outputError.innerHTML;
@@ -458,13 +457,20 @@ function redraw(code, edited) {
     $outputError.innerHTML = "<p>Parsing of prelude failed!</p>" + $outputError.innerHTML;
     return;
   }
+}
 
-  console.log("--------");
+function redraw(code, edited) {
+  if (App.ts.parser == undefined || App.prelude == '') {
+    return;
+  }
+
+  console.log("------");
   Errors = [];
+  Output.clear();
 
   // Parse
   const tree = App.ts.parser.parse(code);
-  result = parse(tree, env, true);
+  let result = parse(tree, App.preludeEnv, true);
   redrawErrors();
   if (result.bail) {
     $outputError.innerHTML = "<p>Error during parsing!</p>" + $outputError.innerHTML;
@@ -582,7 +588,7 @@ function parse(tree, env, userCode) {
   let bail = false;
 
   let rootBlock = node2object.block([], []);
-  rootBlock.env = env;
+  rootBlock.env = userCode ? {...env} : env;
 
   function inner(node, currentBlock) {
     let inStmt = false;

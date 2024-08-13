@@ -56,8 +56,8 @@ Others
 - [X] Presets of example code
 - [X] Save input in localstorage
 - [X] Live syntax highlighting
-- [ ] [perf] Collect all tokens to be highlighted, and dispatch them in batch
-- [ ] [perf] Avoid re-evaluating the prelude each time
+- [X] [perf] Collect all tokens to be highlighted, and dispatch them in batch
+- [X] [perf] Avoid re-evaluating the prelude each time
 - [ ] [perf] Send edits to tree-sitter instead
 - [ ] [perf] Consider using a worker thread for `redraw`, or some other way
       to prevent blocking input, such as merging several successive edits in
