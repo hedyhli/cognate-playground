@@ -10,6 +10,10 @@ pnpm install
 
 ```
 pnpm dev
+
+# Lezer grammar
+pnpm lezer
+pnpm test
 ```
 
 ## Deployment
