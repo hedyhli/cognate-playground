@@ -9,12 +9,6 @@ export const cognateLanguage = LRLanguage.define({
     props: [
       styleTags({
         // Identifier: t.variableName,
-        "If When Unless For While Until": t.controlKeyword,
-        "Def Let": t.definitionKeyword,
-        "+ - \"*\" \"/\"": t.arithmeticOperator,
-        "Modulo Sqrt": t.operatorKeyword,
-        "And Not Or Xor": t.logicOperator,
-        "> < == \"!=\" >= <=": t.compareOperator,
         Boolean: t.bool,
         String: t.string,
         StringEscape: t.escape,

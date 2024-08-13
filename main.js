@@ -628,12 +628,12 @@ function parse(tree, env, userCode) {
         if (userCode) {
           if (Keywords[node.text]) {
             // definitions
-            CM.setMark(node, "keyword");
+            CM.addMark(node, "keyword");
           } else if (Operators[node.text]) {
-            CM.setMark(node, "operator");
+            CM.addMark(node, "operator");
           } else if (Builtins[node.text] || rootBlock.env[node.text] || SpecialSupportBuiltins[node.text]) {
             // builtins
-            CM.setMark(node, "builtin");
+            CM.addMark(node, "builtin");
           }
         }
       case "number":
@@ -667,7 +667,7 @@ function parse(tree, env, userCode) {
             return;
           } else {
             if (userCode && item.value == 'Def') {
-              CM.setMark(previous.node, "function");
+              CM.addMark(previous.node, "function");
             }
             currentBlock.predeclares.push(previous.value);
           }
@@ -689,6 +689,7 @@ function parse(tree, env, userCode) {
   }
 
   inner(root, rootBlock);
+  CM.applyMarks();
   return { rootBlock: rootBlock, bail: bail }
 }
 

@@ -105,12 +105,15 @@ const CM = {
       changes: {from: 0, to: view.state.doc.length, insert: newContent}
     }));
   },
+  marks: [],
   // Note that node is a tree-sitter node
-  setMark: (node, kind) => {
-    view.dispatch({
-      effects: addMarks.of([ markKinds[kind].range(node.startIndex, node.endIndex) ]),
-    });
+  addMark: (node, kind) => {
+    CM.marks.push(markKinds[kind].range(node.startIndex, node.endIndex));
   },
+  applyMarks: () => {
+    view.dispatch({ effects: addMarks.of(CM.marks), });
+    CM.marks = [];
+  }
 };
 
 export default CM;
