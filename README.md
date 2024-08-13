@@ -14,9 +14,10 @@ builtins from the C prelude.
 [Tree-sitter](https://github.com/hedyhli/tree-sitter-cognate) is used as the
 parser, and the the runtime written entirely in JavaScript.
 
-Files
+Files of interest
 - index.html
-- main.js -- the entire app
+- main.js -- the runtime, and the rest of the app excluding the editor
+- `editor/*` -- code relating to the editor component
 - `public/tree-sitter.{js,wasm}` -- from tree-sitter releases
 - `public/tree-sitter-cognate.wasm` -- built from
   [tree-sitter-cognate](https://github.com/hedyhli/tree-sitter-cognate)
