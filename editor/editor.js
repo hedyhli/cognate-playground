@@ -111,9 +111,29 @@ const CM = {
     CM.marks.push(markKinds[kind].range(node.startIndex, node.endIndex));
   },
   applyMarks: () => {
-    view.dispatch({ effects: addMarks.of(CM.marks), });
-    CM.marks = [];
-  }
+    if (CM.marks.length != 0) {
+      view.dispatch({ effects: [
+        filterMarks.of((from, to) => false),
+        addMarks.of(CM.marks),
+      ]});
+      CM.marks = [];
+    }
+  },
+  index2position: (doc, index) => {
+    let line = doc.lineAt(index);
+    return { row: line.number-1, column: index - line.from };
+  },
+  change2tsEdit: (previousState, newState, fromA, toA, fromB, toB, inserted) => {
+    let edit = {
+      startIndex: fromA,
+      oldEndIndex: toA,
+      newEndIndex: toB,
+      startPosition: CM.index2position(previousState.doc, fromA),
+      oldEndPosition: CM.index2position(previousState.doc, toA),
+      newEndPosition: CM.index2position(newState.doc, toB),
+    };
+    return edit;
+  },
 };
 
 export default CM;

@@ -20,6 +20,7 @@ const Store = {
 const App = {
   // The select preset
   selectionChange: false,
+  tree: null,
   prelude: '',
   preludeEnv: {},
   fetchPrelude: () => {
@@ -51,10 +52,24 @@ const App = {
       (update) => {
         if (update.docChanged) {
           // Don't update Store if the code input changed due to a <select> change.
-          // TODO: Do it in a worker thread or some other asynchronous way to
-          // prevent blocking view updates.
-          redraw(update.state.doc.toString(), !App.selectionChange);
-          App.selectionChange = false;
+          let shouldRedraw = false;
+          let changes = [];
+          update.changes.iterChanges((fromA, toA, fromB, toB, inserted) => {
+            if (fromA != fromB || toA != toB || inserted.length != 0) {
+              shouldRedraw = true;
+            }
+            changes.push([fromA, toA, fromB, toB, inserted])
+          })
+
+          if (shouldRedraw) {
+            changes.forEach((info) => {
+              App.tree.edit(CM.change2tsEdit(update.startState, update.state, ...info));
+            });
+            // TODO: Do it in a worker thread or some other asynchronous way to
+            // prevent blocking view updates.
+            redraw(update.state.doc.toString(), !App.selectionChange);
+            App.selectionChange = false;
+          }
         }
       }
     );
@@ -469,8 +484,8 @@ function redraw(code, edited) {
   Output.clear();
 
   // Parse
-  const tree = App.ts.parser.parse(code);
-  let result = parse(tree, App.preludeEnv, true);
+  App.tree = App.ts.parser.parse(code, App.tree);
+  let result = parse(App.tree, App.preludeEnv, true);
   redrawErrors();
   if (result.bail) {
     $outputError.innerHTML = "<p>Error during parsing!</p>" + $outputError.innerHTML;
@@ -673,6 +688,7 @@ function parse(tree, env, userCode) {
             return;
           } else {
             if (userCode && item.value == 'Def') {
+              // TODO: don't override if already marked
               CM.addMark(previous.node, "function");
             }
             currentBlock.predeclares.push(previous.value);
