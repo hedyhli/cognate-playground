@@ -303,7 +303,7 @@ function redraw(code, edited) {
   analyzeBlock(result.rootBlock);
   CM.applyMarks(true);
   redrawErrors();
-  if (result.bail) {
+  if (result.bail || Errors.length != 0) {
     $outputError.innerHTML = "<p>Error during parsing!</p>" + $outputError.innerHTML;
   } else {
     // Exec
@@ -539,19 +539,30 @@ function parse(tree, env, userCode) {
 }
 
 function analyzeBlock(currentBlock) {
+  let bail = false;
   for (let item of currentBlock.body) {
+    if (bail) {
+      return;
+    }
     if (item.type == 'identifier' && ident2kind[item.value] == undefined) {
+      let foundDecl = false;
       let block = currentBlock;
       while (block) {
         // TODO
         // PERF: find ways to cache
         if (block.predeclares[item.value] == 'Let') {
+          foundDecl = true;
           break;
         } else if (block.predeclares[item.value] == 'Def') {
+          foundDecl = true;
           CM.addMark(item.node, "function");
           break;
         }
         block = block.parent;
+      }
+      if (!foundDecl) {
+        appendError(`undefined symbol ${textMarked(escape(item.value))}`);
+        Linter.addDiagnostic(item.node, "error", "undefined symbol");
       }
     } else if (item.type == 'block') {
       analyzeBlock(item);
@@ -577,6 +588,7 @@ function process(currentBlock, op, scoped) {
         }
         return value;
       } else {
+        // Should not happen, since these are already checked in analyzeBlock
         error = `undefined symbol ${textMarked(escape(item.value))}`;
         Linter.addDiagnostic(item.node, "error", "undefined symbol");
         return undefined;
