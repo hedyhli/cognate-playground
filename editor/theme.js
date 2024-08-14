@@ -78,8 +78,6 @@ export const editorTheme = EditorView.theme({
   },
 
   ".cm-tooltip": {
-    border: "1px solid #4b4e54",
-    borderRadius: "3px",
     backgroundColor: c.tooltipBackground,
     boxShadow: "2px 4px 15px #222529",
   },
