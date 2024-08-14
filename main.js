@@ -563,6 +563,10 @@ function process(currentBlock, op, scoped) {
     if (item.type == 'identifier') {
       let value = env[item.value];
       if (value != undefined) {
+        if (value.type == '_predeclared') {
+          error = `${textMarked(item.value)} used before declaration`;
+          return undefined;
+        }
         return value;
       } else {
         error = `undefined symbol ${textMarked(escape(item.value))}`;
