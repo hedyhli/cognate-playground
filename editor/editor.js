@@ -111,12 +111,16 @@ const CM = {
     if (kind)
       CM.marks.push(markKinds[kind].range(node.startIndex, node.endIndex));
   },
-  applyMarks: () => {
+  applyMarks: (clear) => {
     if (CM.marks.length != 0) {
-      view.dispatch({ effects: [
-        filterMarks.of((from, to) => false),
-        addMarks.of(CM.marks),
-      ]});
+      if (clear) {
+        view.dispatch({ effects: [
+          filterMarks.of((from, to) => false),
+          addMarks.of(CM.marks),
+        ]});
+      } else {
+        view.dispatch({ effects: addMarks.of(CM.marks) });
+      }
       CM.marks = [];
     }
   },

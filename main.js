@@ -190,12 +190,43 @@ function normalizeIdentifier(name) {
 }
 
 const node2object = {
-  number: node => ({ type: 'number', value: Number.parseFloat(node.text), node: node }),
-  string: node => ({ type: 'string', value: node.text.slice(1, node.text.length-1), node: node }),
-  boolean: node => ({ type: 'boolean', value: (node.text.toLowerCase() == 'true'), node: node }),
-  identifier: node => ({ type: 'identifier', value: normalizeIdentifier(node.text), node: node }),
-  symbol: node => ({ type: 'symbol', value: node.text.slice(1).toLowerCase(), node: node }),
-  block: (body, predec) => ({ type: 'block', body: body, env: {}, predeclares: predec }),
+  number: (node, userCode) => ({
+    type: 'number',
+    value: Number.parseFloat(node.text),
+    node: node,
+    userCode: userCode,
+  }),
+  string: (node, userCode) => ({
+    type: 'string',
+    value: node.text.slice(1, node.text.length-1),
+    node: node,
+    userCode: userCode,
+  }),
+  boolean: (node, userCode) => ({
+    type: 'boolean',
+    value: (node.text.toLowerCase() == 'true'),
+    node: node,
+    userCode: userCode,
+  }),
+  identifier: (node, userCode) => ({
+    type: 'identifier',
+    value: normalizeIdentifier(node.text),
+    node: node,
+    userCode: userCode,
+  }),
+  symbol: (node, userCode) => ({
+    type: 'symbol',
+    value: node.text.slice(1).toLowerCase(),
+    node: node,
+    userCode: userCode,
+  }),
+  block: (body, predec, userCode) => ({
+    type: 'block',
+    body: body,
+    env: {},
+    predeclares: predec,
+    userCode: userCode,
+  }),
 };
 
 const value2object = {
@@ -493,12 +524,14 @@ function redraw(code, edited) {
   // Parse
   App.tree = App.ts.parser.parse(code, App.tree);
   let result = parse(App.tree, App.preludeEnv, true);
+  CM.applyMarks(true);
   redrawErrors();
   if (result.bail) {
     $outputError.innerHTML = "<p>Error during parsing!</p>" + $outputError.innerHTML;
   } else {
     // Exec
     result = process(result.rootBlock, [], false);
+    CM.applyMarks();
     $outputDebug.innerHTML = _printArr(result.stack);
     if (result.error != '') {
       appendError(result.error);
@@ -660,7 +693,7 @@ function parse(tree, env, userCode) {
       case "string":
       case "boolean":
       case "symbol":
-        currentBlock.body.push(node2object[name](node));
+        currentBlock.body.push(node2object[name](node, userCode));
         break;
       case "source_file":
         break;
@@ -709,7 +742,6 @@ function parse(tree, env, userCode) {
   }
 
   inner(root, rootBlock);
-  CM.applyMarks();
   return { rootBlock: rootBlock, bail: bail }
 }
 
@@ -816,6 +848,9 @@ function process(currentBlock, op, scoped) {
         }
         if (env[item.value] && env[item.value].type == 'function') {
           // Defined, and is a function.
+          if (item.userCode && ident2kind[item.value] == undefined) {
+            CM.addMark(item.node, "function");
+          }
           let call_result = process(env[item.value].block, op, true);
           if (call_result.error != "") {
             error = `in ${textMarked(item.value)}: ${call_result.error}`;
