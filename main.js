@@ -531,7 +531,6 @@ function redraw(code, edited) {
   } else {
     // Exec
     result = process(result.rootBlock, [], false);
-    CM.applyMarks();
     $outputDebug.innerHTML = _printArr(result.stack);
     if (result.error != '') {
       appendError(result.error);
@@ -642,7 +641,7 @@ function parse(tree, env, userCode) {
   const root = tree.rootNode;
   let bail = false;
 
-  let rootBlock = node2object.block([], []);
+  let rootBlock = node2object.block([], [], false);
   rootBlock.env = userCode ? {...env} : env;
 
   function inner(node, currentBlock) {
@@ -679,15 +678,17 @@ function parse(tree, env, userCode) {
     switch (name) {
       case "block":
         inBlock = true;
-        currentBlock.body.push(node2object.block([], []));
+        currentBlock.body.push(node2object.block([], {}, userCode));
         break;
       case "statement":
         inStmt = true;
-        currentBlock.body.push(node2object.block([], currentBlock.predeclares));
+        currentBlock.body.push(node2object.block([], currentBlock.predeclares, userCode));
         break;
       case "identifier":
         if (userCode) {
-          CM.addMark(node, ident2kind[node.text]);
+          if (ident2kind[node.text]) {
+            CM.addMark(node, ident2kind[node.text]);
+          }
         }
       case "number":
       case "string":
@@ -713,16 +714,24 @@ function parse(tree, env, userCode) {
       for(let i = stmt.body.length-1; i>=0; i--) {
         let item = stmt.body[i];
         let previous = stmt.body[i+1];
-        if (item.type == 'identifier' && ['Def', 'Let'].includes(item.value)) {
-          if (!(previous && previous.type == 'identifier')) {
-            appendError(`syntax error: identifier expected after ${item.value}`);
-            bail = true;
-            return;
-          } else {
-            if (userCode && item.value == 'Def' && ident2kind[previous.value] == undefined) {
-              CM.addMark(previous.node, "function");
+        if (item.type == 'identifier') {
+          if (['Def', 'Let'].includes(item.value)) {
+            if (!(previous && previous.type == 'identifier')) {
+              appendError(`syntax error: identifier expected after ${item.value}`);
+              bail = true;
+              return;
+            } else {
+              if (userCode && item.value == 'Def' && ident2kind[previous.value] == undefined) {
+                CM.addMark(previous.node, "function");
+              }
+              if (currentBlock.predeclares[previous.value]) {
+                appendError(`${item.value} ${textMarked(previous.value)}: cannot shadow in the same block`);;
+                bail = true;
+              } else {
+                currentBlock.predeclares[previous.value] = item.value;
+              }
             }
-            currentBlock.predeclares.push(previous.value);
+          } else {
           }
         }
         currentBlock.body.push(item);
@@ -735,6 +744,7 @@ function parse(tree, env, userCode) {
 
     } else if (node.type == 'source_file') {
       node.children.forEach((child, c) => inner(child, currentBlock));
+
     } else {
       // TODO: string escapes
       // console.log(node.type, node.children.length, node.children.map((c) => c.text).join(" and "));
@@ -811,16 +821,8 @@ function process(currentBlock, op, scoped) {
   }
 
   // Predeclare names
-  let predeclares = {};
-  for (let i = 0; i < currentBlock.predeclares.length; i++) {
-    let name = currentBlock.predeclares[i];
-    if (predeclares[name] != undefined) {
-      error = `${name}: cannot shadow in the same block`;
-      return {stack: op, error: error};
-    }
-    predeclares[name] = true;
+  for (let name of Object.keys(currentBlock.predeclares)) {
     env[name] = { type: '_predeclared' };
-    // TODO: clear the .predeclares array?
   }
 
   // Execute the block
@@ -848,9 +850,6 @@ function process(currentBlock, op, scoped) {
         }
         if (env[item.value] && env[item.value].type == 'function') {
           // Defined, and is a function.
-          if (item.userCode && ident2kind[item.value] == undefined) {
-            CM.addMark(item.node, "function");
-          }
           let call_result = process(env[item.value].block, op, true);
           if (call_result.error != "") {
             error = `in ${textMarked(item.value)}: ${call_result.error}`;
