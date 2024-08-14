@@ -1,8 +1,9 @@
+import { completions as cognateBuiltins } from "../builtins.js"
 import { parser } from "./parser.js"
+
 import { foldNodeProp, indentNodeProp } from "@codemirror/language"
 import { LanguageSupport, LRLanguage, delimitedIndent } from "@codemirror/language"
 import { styleTags, tags as t } from "@lezer/highlight"
-import { completeFromList } from "@codemirror/autocomplete"
 
 export const cognateLanguage = LRLanguage.define({
   parser: parser.configure({
@@ -36,13 +37,17 @@ export const cognateLanguage = LRLanguage.define({
 })
 
 export const cognateCompletion = cognateLanguage.data.of({
-  autocomplete: completeFromList([
-    { label: "Def", type: "keyword" },
-    { label: "Let", type: "keyword" },
-    { label: "For", type: "keyword" },
-    { label: "Do", type: "keyword" },
-    { label: "Print", type: "function" },
-  ])
+  autocomplete: (context) => {
+    let token = context.tokenBefore(["Identifier"]);
+    if (token) {
+      if (token.from == token.to && !context.explicit)
+        return null
+      return {
+        from: token.from,
+        options: cognateBuiltins,
+      }
+    }
+  }
 })
 
 export function cognate() {

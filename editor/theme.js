@@ -78,8 +78,10 @@ export const editorTheme = EditorView.theme({
   },
 
   ".cm-tooltip": {
-    border: "none",
-    backgroundColor: c.tooltipBackground
+    border: "1px solid #4b4e54",
+    borderRadius: "3px",
+    backgroundColor: c.tooltipBackground,
+    boxShadow: "2px 4px 15px #222529",
   },
   ".cm-tooltip .cm-tooltip-arrow:before": {
     borderTopColor: "transparent",
@@ -91,9 +93,15 @@ export const editorTheme = EditorView.theme({
   },
   ".cm-tooltip-autocomplete": {
     "& > ul > li[aria-selected]": {
-      backgroundColor: c.highlightBackground,
-      color: c.ivory
+      backgroundColor: "#555d6c",
     }
+  },
+  ".cm-completionInfo.cm-completionInfo-right": {
+    marginLeft: "5px",
+  },
+  ".cm-completionDetail": {
+    float: "right",
+    color: c.ivory,
   }
 }, {dark: true});
 
