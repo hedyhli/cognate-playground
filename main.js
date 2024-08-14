@@ -2,7 +2,7 @@
 // import TreeSitter from 'web-tree-sitter';
 // import TSCognateURL from './public/tree-sitter-cognate.wasm?url';
 // import PreludeURL from './prelude.cog?url'
-import CM from './editor/editor.js';
+import { CM, Linter } from './editor/editor.js';
 import { ident2kind, Builtins, initIdent2kind } from './builtins.js';
 
 const $selectExample = document.getElementById("select-example")
@@ -294,6 +294,7 @@ function redraw(code, edited) {
 
   console.log("------");
   Errors = [];
+  Linter.diagnostics = [];
   Output.clear();
 
   // Parse
@@ -441,12 +442,16 @@ function parse(tree, env, userCode) {
     }
 
     if (name == "ERROR") {
-      if (node.text != '')
+      if (node.text != '') {
         appendError(
           `unexpected token: '${textMarked(node.text)}' ` + textLight(`(${node.startPosition.row}, ${node.startPosition.column})`)
         );
-      else
+        Linter.addDiagnostic(node, "error", "unexpected token");
+      }
+      else {
         appendError("syntax error " + textLight(`(${node.startPosition.row}, ${node.startPosition.column})`));
+        Linter.addDiagnostic(node, "error", "syntax error");
+      }
       bail = true;
       return;
     }
@@ -497,11 +502,13 @@ function parse(tree, env, userCode) {
           if (['Def', 'Let'].includes(item.value)) {
             if (!(previous && previous.type == 'identifier')) {
               appendError(`syntax error: identifier expected after ${item.value}`);
+              Linter.addDiagnostic(item.node, "error", `syntax error: identifier expected after ${item.value}`);
               bail = true;
               return;
             } else {
               if (currentBlock.predeclares[previous.value]) {
                 appendError(`${item.value} ${textMarked(previous.value)}: cannot shadow in the same block`);;
+                Linter.addDiagnostic(previous.node, "error", "cannot shadow in the same block");
                 bail = true;
               } else {
                 currentBlock.predeclares[previous.value] = item.value;
@@ -565,11 +572,13 @@ function process(currentBlock, op, scoped) {
       if (value != undefined) {
         if (value.type == '_predeclared') {
           error = `${textMarked(item.value)} used before declaration`;
+          Linter.addDiagnostic(item.node, "error", "variable used before declaration");
           return undefined;
         }
         return value;
       } else {
         error = `undefined symbol ${textMarked(escape(item.value))}`;
+        Linter.addDiagnostic(item.node, "error", "undefined symbol");
         return undefined;
       }
     } else {

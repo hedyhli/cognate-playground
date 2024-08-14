@@ -5,7 +5,7 @@ import * as cmLanguage from '@codemirror/language';
 import * as cmCommands from '@codemirror/commands';
 import * as cmSearch from '@codemirror/search';
 import * as cmAutocomplete from '@codemirror/autocomplete';
-// import * as cmLint from '@codemirror/lint';
+import * as cmLint from '@codemirror/lint';
 
 import { cognate } from './cognate.js'
 import { editorStyle, c as colors } from './theme.js'
@@ -37,6 +37,26 @@ const markFieldExtension = StateField.define({
   // Indicate that this field provides a set of decorations
   provide: f => EditorView.decorations.from(f)
 })
+
+export const Linter = {
+  diagnostics: [],
+  addDiagnostic: (node, severity, message) => {
+    console.log("called");
+    Linter.diagnostics.push({
+      from: node.startIndex,
+      to: node.endIndex,
+      severity: severity,
+      message: message,
+    });
+  }
+};
+
+const linterPlugin = cmLint.linter(view => {
+  let diagnostics = [...Linter.diagnostics];
+  console.log(diagnostics);
+  Linter.diagnostics = [];
+  return diagnostics;
+});
 
 const coreExtensions = [
     cmView.lineNumbers(),
@@ -70,6 +90,8 @@ const coreExtensions = [
     ]),
 
   markFieldExtension,
+  linterPlugin,
+  cmLint.lintGutter(),
 ];
 
 const markKinds = {
@@ -87,7 +109,7 @@ const markKinds = {
   }),
 };
 
-const CM = {
+export const CM = {
   setup: (initialText, element, listener) => {
     view = new EditorView({
       doc: initialText,
@@ -141,4 +163,3 @@ const CM = {
   },
 };
 
-export default CM;
