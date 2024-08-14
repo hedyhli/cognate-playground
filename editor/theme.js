@@ -31,6 +31,11 @@ export const editorTheme = EditorView.theme({
     caretColor: c.cursor,
   },
 
+  ".cm-scroller": {
+    fontFamily: "var(--mono-font)",
+    lineHeight: "inherit",
+  },
+
   ".cm-cursor, .cm-dropCursor": {
     borderLeftColor: c.cursor,
     borderLeftWidth: "2.5px", // Default is 1.2
@@ -88,6 +93,9 @@ export const editorTheme = EditorView.theme({
   ".cm-tooltip .cm-tooltip-arrow:after": {
     borderTopColor: c.tooltipBackground,
     borderBottomColor: c.tooltipBackground
+  },
+  ".cm-tooltip.cm-tooltip-autocomplete > ul": {
+    fontFamily: "var(--mono-font)",
   },
   ".cm-tooltip-autocomplete": {
     "& > ul > li[aria-selected]": {
