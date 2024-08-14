@@ -30,6 +30,7 @@ const App = {
       .then((text) => {
         App.prelude = text;
         execPrelude();
+        initIdent2kind();
         redraw(Store.getInput());
       })
       .catch((e) => console.error(e));
@@ -228,41 +229,7 @@ const bindObject = {
 };
 
 // For syntax highlighting
-const Operators = {};
-"+ - * / > < == != >= <=".split(" ").forEach(op => { Operators[op] = true });
-const Keywords = {};
-[
-  "Def",
-  "Let",
-  "Set",
-  "For",
-  "While",
-  "If",
-  "Unless",
-  "When",
-  "Until"
-].forEach(kw => { Keywords[kw] = true });
-
-// Ones that are special-cased in `process`
-const SpecialSupportBuiltins = {};
-[
-  "Number?",
-  "Number!",
-  "Boolean?",
-  "Boolean!",
-  "List?",
-  "List!",
-  "Symbol?",
-  "Symbol!",
-  "Block?",
-  "Block!",
-  "Print",
-  "Show",
-  "Put",
-  "List",
-  "Stack",
-  "Clear",
-].forEach(name => { SpecialSupportBuiltins[name] = true });
+const ident2kind = {};
 
 const Builtins = {
   // Value checks
@@ -447,6 +414,46 @@ const Builtins = {
     fn: (a, b) => a.value + b.value,
   },
 };
+
+function initIdent2kind() {
+  Object.keys(Builtins).forEach(name => { ident2kind[name] = "builtin" });
+  // Ones that are special-cased in `process`
+  [
+    "Number?",
+    "Number!",
+    "Boolean?",
+    "Boolean!",
+    "List?",
+    "List!",
+    "Symbol?",
+    "Symbol!",
+    "Block?",
+    "Block!",
+    "Print",
+    "Show",
+    "Put",
+    "List",
+    "Stack",
+    "Clear",
+  ].forEach(name => { ident2kind[name] = "builtin" });
+
+  Object.keys(App.preludeEnv).forEach((name) => { ident2kind[name] = "builtin" });
+
+  "+ - * / > < == != >= <=".split(" ").forEach(op => { ident2kind[op] = "operator" });
+
+  [
+    "Def",
+    "Let",
+    "Set",
+    "For",
+    "While",
+    "If",
+    "Unless",
+    "When",
+    "Until"
+  ].forEach(kw => { ident2kind[kw] = "keyword" });
+}
+
 
 function execPrelude() {
   if (App.ts.parser == undefined || App.prelude == '') {
@@ -647,15 +654,7 @@ function parse(tree, env, userCode) {
         break;
       case "identifier":
         if (userCode) {
-          if (Keywords[node.text]) {
-            // definitions
-            CM.addMark(node, "keyword");
-          } else if (Operators[node.text]) {
-            CM.addMark(node, "operator");
-          } else if (Builtins[node.text] || rootBlock.env[node.text] || SpecialSupportBuiltins[node.text]) {
-            // builtins
-            CM.addMark(node, "builtin");
-          }
+          CM.addMark(node, ident2kind[node.text]);
         }
       case "number":
       case "string":
@@ -687,8 +686,7 @@ function parse(tree, env, userCode) {
             bail = true;
             return;
           } else {
-            if (userCode && item.value == 'Def') {
-              // TODO: don't override if already marked
+            if (userCode && item.value == 'Def' && ident2kind[previous.value] == undefined) {
               CM.addMark(previous.node, "function");
             }
             currentBlock.predeclares.push(previous.value);

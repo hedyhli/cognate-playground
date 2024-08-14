@@ -108,7 +108,8 @@ const CM = {
   marks: [],
   // Note that node is a tree-sitter node
   addMark: (node, kind) => {
-    CM.marks.push(markKinds[kind].range(node.startIndex, node.endIndex));
+    if (kind)
+      CM.marks.push(markKinds[kind].range(node.startIndex, node.endIndex));
   },
   applyMarks: () => {
     if (CM.marks.length != 0) {
