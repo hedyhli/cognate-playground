@@ -44,7 +44,7 @@ export const cognateCompletion = cognateLanguage.data.of({
         return null
       return {
         from: token.from,
-        options: cognateBuiltins,
+        options: cognateBuiltins.filter((item) => item.label.startsWith(token.text[0])),
       }
     }
   }
