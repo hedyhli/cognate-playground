@@ -100,7 +100,6 @@ const CM = {
       parent: element,
     });
   },
-  inCompletion: () => cmAutocomplete.completionStatus(view.state) != null,
   setText: (newContent) => {
     view.dispatch(view.state.update({
       changes: {from: 0, to: view.state.doc.length, insert: newContent}

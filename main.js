@@ -67,12 +67,10 @@ const App = {
             changes.forEach((info) => {
               App.tree.edit(CM.change2tsEdit(update.startState, update.state, ...info));
             });
-            if (!CM.inCompletion()) {
-              // TODO: Do it in a worker thread or some other asynchronous way to
-              // prevent blocking view updates.
-              redraw(update.state.doc.toString(), !App.selectionChange);
-              App.selectionChange = false;
-            }
+            // TODO: Do it in a worker thread or some other asynchronous way to
+            // prevent blocking view updates.
+            redraw(update.state.doc.toString(), !App.selectionChange);
+            App.selectionChange = false;
           }
         }
       }
