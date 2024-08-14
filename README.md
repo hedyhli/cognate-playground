@@ -62,7 +62,8 @@ Others
 - [ ] [perf] Consider using a worker thread for `redraw`, or some other way
       to prevent blocking input, such as merging several successive edits in
       one, or implementing a `Run` button.
-- [ ] (1) Highlight references of functions in scope
+- [X] (1) Highlight references of functions in scope
 - [ ] Show parser errors inline in the editor
 - [ ] More informative runtime errors
-- [ ] Fix (1); highlight with static analysis rather than at runtime
+- [X] Fix (1); highlight with static analysis rather than at runtime
+- [ ] [perf] Find ways to accurate cache for (1)

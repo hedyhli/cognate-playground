@@ -220,12 +220,13 @@ const node2object = {
     node: node,
     userCode: userCode,
   }),
-  block: (body, predec, userCode) => ({
+  block: (body, predec, userCode, parent) => ({
     type: 'block',
     body: body,
     env: {},
     predeclares: predec,
     userCode: userCode,
+    parent: parent,
   }),
 };
 
@@ -524,6 +525,7 @@ function redraw(code, edited) {
   // Parse
   App.tree = App.ts.parser.parse(code, App.tree);
   let result = parse(App.tree, App.preludeEnv, true);
+  analyzeBlock(result.rootBlock);
   CM.applyMarks(true);
   redrawErrors();
   if (result.bail) {
@@ -678,11 +680,14 @@ function parse(tree, env, userCode) {
     switch (name) {
       case "block":
         inBlock = true;
-        currentBlock.body.push(node2object.block([], {}, userCode));
+        currentBlock.body.push(node2object.block([], {}, userCode, currentBlock));
         break;
       case "statement":
         inStmt = true;
-        currentBlock.body.push(node2object.block([], currentBlock.predeclares, userCode));
+        // XXX:
+        // Shouldn't this "pseudo" block use only its block?
+        // why doesn't the parent get referenced if it's not provided here?
+        currentBlock.body.push(node2object.block([], currentBlock.predeclares, userCode, currentBlock));
         break;
       case "identifier":
         if (userCode) {
@@ -721,9 +726,6 @@ function parse(tree, env, userCode) {
               bail = true;
               return;
             } else {
-              if (userCode && item.value == 'Def' && ident2kind[previous.value] == undefined) {
-                CM.addMark(previous.node, "function");
-              }
               if (currentBlock.predeclares[previous.value]) {
                 appendError(`${item.value} ${textMarked(previous.value)}: cannot shadow in the same block`);;
                 bail = true;
@@ -753,6 +755,27 @@ function parse(tree, env, userCode) {
 
   inner(root, rootBlock);
   return { rootBlock: rootBlock, bail: bail }
+}
+
+function analyzeBlock(currentBlock) {
+  for (let item of currentBlock.body) {
+    if (item.type == 'identifier' && ident2kind[item.value] == undefined) {
+      let block = currentBlock;
+      while (block) {
+        // TODO
+        // PERF: find ways to cache
+        if (block.predeclares[item.value] == 'Let') {
+          break;
+        } else if (block.predeclares[item.value] == 'Def') {
+          CM.addMark(item.node, "function");
+          break;
+        }
+        block = block.parent;
+      }
+    } else if (item.type == 'block') {
+      analyzeBlock(item);
+    }
+  }
 }
 
 
