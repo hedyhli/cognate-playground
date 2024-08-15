@@ -5,7 +5,7 @@
 import './simple.min.css';
 
 import { CM, Linter } from './editor/editor.js';
-import { ident2kind, Builtins, initIdent2kind } from './builtins.js';
+import { ident2kind, Builtins, initIdent2kind, normalizeIdentifier, value2object } from './builtins.js';
 
 const $selectExample = document.getElementById("select-example")
 const $output = document.getElementById("output")
@@ -188,10 +188,6 @@ function textMarked(text) {
   return `<span style='color: var(--marked)'>${text}</span>`;
 }
 
-function normalizeIdentifier(name) {
-  return name[0].toUpperCase() + name.substr(1).toLowerCase();
-}
-
 const node2object = {
   number: (node, userCode) => ({
     type: 'number',
@@ -231,18 +227,6 @@ const node2object = {
     userCode: userCode,
     parent: parent,
   }),
-};
-
-const value2object = {
-  number: value => ({ type: 'number', value: value }),
-  string: (value, style) => ({ type: 'string', value: value, style: style }),
-  boolean: value => ({ type: 'boolean', value: value ? true : false }),
-  // Is this ever needed?
-  identifier: value => ({ type: 'identifier', value: normalizeIdentifier(value) }),
-  // And this.
-  symbol: value => ({ type: 'symbol', value: value }),
-  list: list => ({ type: 'list', list: list }),
-  any: anything => anything,
 };
 
 const bindObject = {

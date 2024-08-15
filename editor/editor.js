@@ -41,7 +41,6 @@ const markFieldExtension = StateField.define({
 export const Linter = {
   diagnostics: [],
   addDiagnostic: (node, severity, message) => {
-    console.log("called");
     Linter.diagnostics.push({
       from: node.startIndex,
       to: node.endIndex,
@@ -53,7 +52,6 @@ export const Linter = {
 
 const linterPlugin = cmLint.linter(view => {
   let diagnostics = [...Linter.diagnostics];
-  console.log(diagnostics);
   Linter.diagnostics = [];
   return diagnostics;
 });

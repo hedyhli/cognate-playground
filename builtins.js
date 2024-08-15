@@ -4,6 +4,23 @@ import { snippetCompletion } from '@codemirror/autocomplete';
 export const ident2kind = {};
 export const completions = [];
 
+export function normalizeIdentifier(name) {
+  return name[0].toUpperCase() + name.substr(1).toLowerCase();
+}
+
+export const value2object = {
+  number: value => ({ type: 'number', value: value }),
+  string: (value, style) => ({ type: 'string', value: value, style: style }),
+  boolean: value => ({ type: 'boolean', value: value ? true : false }),
+  // Is this ever needed?
+  identifier: value => ({ type: 'identifier', value: normalizeIdentifier(value) }),
+  // And this.
+  symbol: value => ({ type: 'symbol', value: value }),
+  list: list => ({ type: 'list', list: list }),
+  any: anything => anything,
+};
+
+
 export const Builtins = {
   // Value checks
   "Zero?": {
@@ -171,7 +188,7 @@ export const Builtins = {
     returns: 'boolean',
     fn: (l) => l.list.length == 0,
   },
-  "Length": {
+  Length: {
     params: [{name: 'list', type: 'list'}],
     returns: 'number',
     fn: (l) => l.list.length,
@@ -180,6 +197,71 @@ export const Builtins = {
     params: [{name: 'string', type: 'string'}, {name: 'string', type: 'string'}],
     returns: 'string',
     fn: (a, b) => a.value + b.value,
+  },
+  Head: {
+    params: [{name: 'string', type: 'string'}],
+    returns: 'string',
+    fn: (s) => s.value.length == 0 ? { error: "attempt to get Head of empty string" } : s.value[0],
+  },
+  Tail: {
+    params: [{name: 'string', type: 'string'}],
+    returns: 'string',
+    fn: (s) => s.value.length == 0 ? { error: "attempt to get Tail of empty string" } : s.value.substr(1),
+  },
+  "String-length": {
+    params: [{name: 'string', type: 'string'}],
+    returns: 'number',
+    fn: (s) => s.value.length,
+  },
+  Substring: {
+    params: [
+      {name: 'start', type: 'number'},
+      {name: 'end', type: 'number'},
+      {name: 'string', type: 'string'},
+    ],
+    returns: 'string',
+    fn: (start, end, s) => {
+      let max = s.value.length - 1;
+      let a = start.value, b = end.value;
+      if (a < 0 || b < 0 || a > b || a > max) {
+        return { error: `invalid range: ${a}..=${b}` };
+      }
+      return s.value.substr(a, b+1);
+    },
+  },
+  Ordinal: {
+    params: [{name: 'string', type: 'string'}],
+    returns: 'number',
+    fn: (s) => s.value.length != 1 ? { error: `invalid string of length ${s.value.length}, should be of length 1` } : s.value.charCodeAt(0),
+  },
+  Character: {
+    params: [{name: 'ordinal number', type: 'number'}],
+    returns: 'string',
+    fn: (a) => {
+      let s = String.fromCharCode(a.value);
+      return s == '' ? { error: `cannot convert ${a.value} to UTF16 character` } : s;
+    },
+  },
+  Number: {
+    params: [{name: 'number', type: 'number'}],
+    returns: 'string',
+    fn: (s) => {
+      let n = Number.parseFloat(s.value);
+      return Number.isNaN(n) ? { error: `cannot parse ${s.value} to number` } : n;
+    },
+  },
+  Split: {
+    params: [{name: 'separator', type: 'string'}, {name: 'string', type: 'string'}],
+    returns: 'list',
+    fn: (sep, s) => {
+      if (sep.value.length == 0) {
+        return { error: "empty separator" };
+      }
+      if (s.value.indexOf(sep.value) == -1) {
+        return [];
+      }
+      return s.value.split(sep.value).reverse().map(value2object.string);
+    },
   },
 };
 

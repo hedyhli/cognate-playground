@@ -2,9 +2,8 @@
 
 Canonical instance: <https://cognate-playground.hedy.dev/>
 
-The goal is to build an interactive playground that remains fully client-side
-(i.e., rather than simply calling the official Cognate CLI in a sandboxed
-environment).
+An interactive playground for [Cognate](https://cognate-lang.github.io) that
+remains completely client-side.
 
 <img src="https://raw.githubusercontent.com/hedyhli/cognate-playground/main/demo.png" width=800 />
 
@@ -42,7 +41,7 @@ Implementation
 - [X] Fix `Print`; Add `Show`
 - [X] Update Prelude from upstream
 - [X] Add `Stack`
-- [ ] Add string methods
+- [X] Add string methods
 - [ ] Support `Box` and a proper `Set`
 - [ ] String escape sequences
 - [ ] Prevent stack overflows
