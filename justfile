@@ -3,7 +3,8 @@ default:
 
 deploy:
   pnpm build
-  rsync -rv dist/* pgs.sh:/cognate-playground
+  tar -C dist -cvz . > site.tgz
+  hut pages publish --protocol HTTPS -d cognate-playground.hedy.dev site.tgz
 
 up:
   pnpm dev

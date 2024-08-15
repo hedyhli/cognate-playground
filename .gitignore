@@ -25,3 +25,5 @@ dist-ssr
 
 # Generated files
 editor/parser*.js
+*.tgz
+*.tar.gz

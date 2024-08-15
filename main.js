@@ -2,6 +2,8 @@
 // import TreeSitter from 'web-tree-sitter';
 // import TSCognateURL from './public/tree-sitter-cognate.wasm?url';
 // import PreludeURL from './prelude.cog?url'
+import './simple.min.css';
+
 import { CM, Linter } from './editor/editor.js';
 import { ident2kind, Builtins, initIdent2kind } from './builtins.js';
 
