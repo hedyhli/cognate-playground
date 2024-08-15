@@ -28,7 +28,7 @@ export const editorTheme = EditorView.theme({
   },
 
   ".cm-content": {
-    caretColor: c.cursor,
+    caretColor: "white",
   },
 
   ".cm-scroller": {

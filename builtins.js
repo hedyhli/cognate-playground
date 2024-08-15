@@ -1,3 +1,5 @@
+import { snippetCompletion } from '@codemirror/autocomplete';
+
 // For syntax highlighting
 export const ident2kind = {};
 export const completions = [];
@@ -226,5 +228,21 @@ export function initIdent2kind(preludeEnv) {
       detail: entry[1],
     }) }
   );
+  completions.push(snippetCompletion(
+    "Prints (${});",
+    {
+      label: "Prints",
+      type: "snippet",
+      detail: "snippet",
+    }
+  ));
+  completions.push(snippetCompletion(
+    "Def ${Name} (${});",
+    {
+      label: "Def",
+      type: "snippet",
+      detail: "snippet",
+    }
+  ));
 }
 

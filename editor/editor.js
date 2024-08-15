@@ -63,10 +63,6 @@ const coreExtensions = [
     cmView.highlightActiveLine(), cmView.highlightActiveLineGutter(),
     cmView.highlightSpecialChars(),
     cmView.dropCursor(),
-    cmView.crosshairCursor(),
-    cmView.rectangularSelection(),
-    cmView.drawSelection(),
-    EditorState.allowMultipleSelections.of(true),
 
     cmCommands.history(),
 
@@ -76,8 +72,6 @@ const coreExtensions = [
 
     cmAutocomplete.closeBrackets(),
     cmAutocomplete.autocompletion(),
-
-    cmSearch.highlightSelectionMatches(),
 
     cmView.keymap.of([
         ...cmAutocomplete.closeBracketsKeymap,
