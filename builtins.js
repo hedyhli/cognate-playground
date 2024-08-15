@@ -306,7 +306,7 @@ export function initIdent2kind(preludeEnv) {
   Object.entries(ident2kind).forEach(
     entry => { completions.push({
       label: entry[0],
-      type: entry[1],
+      type: entry[1] == "builtin" ? "function" : entry[1],
       detail: entry[1],
     }) }
   );

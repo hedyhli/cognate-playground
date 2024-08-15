@@ -54,9 +54,10 @@ const linterPlugin = cmLint.linter(view => {
   let diagnostics = [...Linter.diagnostics];
   Linter.diagnostics = [];
   return diagnostics;
-});
+}, { autoPanel: false });
 
 const coreExtensions = [
+  cmLint.lintGutter(),
     cmView.lineNumbers(),
     cmView.highlightActiveLine(), cmView.highlightActiveLineGutter(),
     cmView.highlightSpecialChars(),
@@ -69,7 +70,7 @@ const coreExtensions = [
     cmLanguage.bracketMatching(),
 
     cmAutocomplete.closeBrackets(),
-    cmAutocomplete.autocompletion(),
+    cmAutocomplete.autocompletion({ closeOnBlur: true }),
 
     cmView.keymap.of([
         ...cmAutocomplete.closeBracketsKeymap,
@@ -135,6 +136,8 @@ export const CM = {
         view.dispatch({ effects: addMarks.of(CM.marks) });
       }
       CM.marks = [];
+    } else if (clear) {
+      view.dispatch({ effects: filterMarks.of((from, to) => false) });
     }
   },
   index2position: (doc, index) => {

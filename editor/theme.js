@@ -25,6 +25,7 @@ export const editorTheme = EditorView.theme({
   "&": {
     color: c.ivory,
     backgroundColor: c.background,
+    fontFamily: "var(--sans-font)",
   },
 
   ".cm-content": {
@@ -82,9 +83,14 @@ export const editorTheme = EditorView.theme({
     color: "#ddd"
   },
 
+  "& button": {
+    color: c.ivory,
+  },
+
   ".cm-tooltip": {
     backgroundColor: c.tooltipBackground,
     boxShadow: "2px 4px 15px #222529",
+    color: c.ivory,
   },
   ".cm-tooltip .cm-tooltip-arrow:before": {
     borderTopColor: "transparent",
@@ -102,13 +108,38 @@ export const editorTheme = EditorView.theme({
       backgroundColor: "#555d6c",
     }
   },
+  ".cm-panel.cm-panel-lint ul [aria-selected]": {
+    backgroundColor: "#555d6c",
+  },
   ".cm-completionInfo.cm-completionInfo-right": {
     marginLeft: "5px",
   },
   ".cm-completionDetail": {
     float: "right",
     color: c.ivory,
-  }
+  },
+  ".cm-lint-marker-error": {
+    content: 'url(\'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">' + encodeURIComponent('<path fill="#f87" d="M11,15H13V17H11V15M11,7H13V13H11V7M12,2C6.47,2 2,6.5 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20Z" />') + '</svg>\')',
+    width: "1em",
+    height: "1em",
+    marginLeft: ".25em",
+  },
+  ".cm-lint-marker": {
+  },
+  ".cm-completionIcon-snippet": {
+    "&::after": {
+      content: "'{}'",
+      marginLeft: '-.15rem',
+    },
+  },
+  ".cm-diagnostic": {
+    fontFamily: "var(--mono-font)",
+    fontSize: ".9rem",
+  },
+  ".cm-diagnostic-error": {
+    borderLeft: "2px #f87 solid",
+    padding: ".3rem .8rem",
+  },
 }, {dark: true});
 
 /// The highlighting style for code in the One Dark theme.
