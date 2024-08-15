@@ -102,6 +102,9 @@ export const editorTheme = EditorView.theme({
   },
   ".cm-tooltip.cm-tooltip-autocomplete > ul": {
     fontFamily: "var(--mono-font)",
+    "& > li": {
+      padding: ".15rem .6rem",
+    },
   },
   ".cm-tooltip-autocomplete": {
     "& > ul > li[aria-selected]": {
@@ -129,7 +132,7 @@ export const editorTheme = EditorView.theme({
   ".cm-completionIcon-snippet": {
     "&::after": {
       content: "'{}'",
-      marginLeft: '-.15rem',
+      marginLeft: '-.2rem',
     },
   },
   ".cm-diagnostic": {
