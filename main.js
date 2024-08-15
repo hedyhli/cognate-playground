@@ -14,7 +14,7 @@ const $outputDebug = document.getElementById("output-debug")
 
 const STORAGE_KEY = "cognate-playground";
 const Store = {
-  getInput: () => JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}').custom || 'Print "Hello, world!"',
+  getInput: () => JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}').custom || 'Print "Hello, world!";',
   saveInput: (newInput) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ custom: newInput }));
   },
@@ -178,17 +178,35 @@ Print N;
 Let N 1;`,
   strings: `~~ String literals are denoted by ""
 Let A "apples + banana + peanuts";
-Put "Head: ";
+Put "Head:    \\t";
 Print Head A;
-Put "Tail: ";
+
+Put "Tail:    \\t";
 Print Tail A;
-Put "Substring: "; ~~ Ranges are inclusive on both ends
+
+Put "Substring: \\t";
+~~ Ranges are inclusive on both ends.
 Print Substring 0 4 A;
+
+Print "\\nSplitting by the plus sign:";
+Put "we get a list: \\t";
 Print Split " + " A;
+
+Print "\\nConverting a character to and from its UTF16 code:";
 Print Character Ordinal "A";
 
-~~ String escapes are supported
-~~ TODO`,
+~~ String escape sequences:
+~~ \\a, \\b, \\t, \\n, \\r, \\", \\v, \\\\
+~~ ...are supported. A backslash followed by a
+~~ character other than any of these will be
+~~ treated literally.
+~~
+~~ You can see string escape sequences in action
+~~ above.
+
+Print "\\nShow strings literally using Show:";
+Print Show "1 2 \\t 3 \\n 4";
+`,
   blocks: `~~ Blocks are denoted with (). They will not
 ~~ be evaluated until you call Do.
 
@@ -242,6 +260,9 @@ function textMarked(text) {
   return `<span style='color: var(--marked)'>${text}</span>`;
 }
 
+const stringEscapes = {a: '\a', b: '\b', t: '\t', n: '\n', v: '\v', f: '\f', r: '\r', '"': '"', '\\': '\\'};
+const stringEscapesReverse = {'\a': '\\a', '\b': '\\b', '\t': '\\t', '\n': '\\n', '\v': '\\v', '\f': '\\f', '\r': '\\r', '"': '\\"', '\\': '\\\\'};
+
 const node2object = {
   number: (node, userCode) => ({
     type: 'number',
@@ -249,9 +270,9 @@ const node2object = {
     node: node,
     userCode: userCode,
   }),
-  string: (node, userCode) => ({
+  string: (node, s, userCode) => ({
     type: 'string',
-    value: node.text.slice(1, node.text.length-1),
+    value: s.slice(1, s.length-1),
     node: node,
     userCode: userCode,
   }),
@@ -409,8 +430,15 @@ function _repr(item) {
   }
 }
 
+function rawStringify(str) {
+  let chars = str.split('');
+  let raw = chars.map((char) => stringEscapesReverse[char] || char).join('');
+  console.log(raw);
+  return '"' + raw + '"';
+}
+
 // Object to string for the output
-function resolve(item) {
+function resolve(item, rawString) {
   if (item == undefined) {
     return undefined;
   }
@@ -418,10 +446,15 @@ function resolve(item) {
   switch (item.type) {
     case 'block':
       return value2object.string('(block)', Style.marked);
-    case 'string':
+    case 'string': {
       if (item.style) // This string is already styled by Show/resolve()
         return item;
-      // Otherwise, fallthrough
+      if (rawString) {
+        // convert back string escapes
+        return value2object.string(rawStringify(item.value));
+      }
+      // Otherwise, fall through
+    }
     case 'number':
     case 'symbol':
       return value2object.string(item.value);
@@ -515,11 +548,32 @@ function parse(tree, env, userCode) {
           }
         }
       case "number":
-      case "string":
       case "boolean":
       case "symbol":
         currentBlock.body.push(node2object[name](node, userCode));
         break;
+      case "string": {
+        let str = node.text;
+        let finalStr = '';
+        if (node.children.length != 0) {
+          let start = 0;
+          for (let child of node.children) {
+            // XXX: nodes of other types ignored?
+            if (child.type == 'escape_sequence') {
+              let esc = child.text.substr(1);
+              let startIndex = child.startPosition.column - node.startPosition.column;
+              finalStr += str.substr(start, startIndex - start);
+              finalStr += stringEscapes[esc];
+              start = startIndex + 2;
+            }
+          }
+          finalStr += str.substr(start);
+        } else {
+          finalStr = str;
+        }
+        currentBlock.body.push(node2object.string(node, finalStr, userCode));
+        break;
+      }
       case "source_file":
         break;
       default:
@@ -569,8 +623,7 @@ function parse(tree, env, userCode) {
       node.children.forEach((child, c) => inner(child, currentBlock));
 
     } else {
-      // TODO: string escapes
-      // console.log(node.type, node.children.length, node.children.map((c) => c.text).join(" and "));
+      // XXX: nodes of other types ignored?
     }
   }
 
@@ -786,7 +839,7 @@ function process(currentBlock, op, scoped) {
           // I/O
           case 'Show': {
             let item = exists(op.pop(), 'value');
-            let str = resolve(item);
+            let str = resolve(item, true);
             if (str != undefined) {
               op.push(str);
             }

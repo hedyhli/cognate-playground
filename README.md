@@ -43,7 +43,7 @@ Implementation
 - [X] Add `Stack`
 - [X] Add string methods
 - [ ] Support `Box` and a proper `Set`
-- [ ] String escape sequences
+- [X] String escape sequences
 - [ ] Prevent stack overflows
 - [ ] Optimizations on the stack before parsing
 - [ ] Consider feasibility of transpiling to JS
