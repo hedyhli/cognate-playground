@@ -155,7 +155,61 @@ Print Primes up to 100;`,
 	else (Let N ; Fib of - 1 N ; + Fib of - 2 N);
 
 Put "The 20th fibonacci number is: ";
-Print Fib 20;`
+Print Fib 20;`,
+  numbers: `~~ Numbers
+Print 0;
+Print 0.2;
+Put "1 + 2 = ";
+Print + 1 2;
+
+Put "(1 + 2) * 3 = ";
+Print * 3 + 1 2;
+
+Put "10 Modulo 3 = ";
+Print Modulo 3 10;
+
+Put "Sqrt 4 = ";
+Print Sqrt 4;`,
+  variables: `~~ Variables in cognate are bound using Let.
+Let N 0;
+Print N;
+
+~~ Variables are immutable.
+Let N 1;`,
+  strings: `~~ String literals are denoted by ""
+Let A "apples + banana + peanuts";
+Put "Head: ";
+Print Head A;
+Put "Tail: ";
+Print Tail A;
+Put "Substring: "; ~~ Ranges are inclusive on both ends
+Print Substring 0 4 A;
+Print Split " + " A;
+Print Character Ordinal "A";
+
+~~ String escapes are supported
+~~ TODO`,
+  blocks: `~~ Blocks are denoted with (). They will not
+~~ be evaluated until you call Do.
+
+(Print "hi");
+Drop;
+
+Do (Print "hi 2");`,
+  functions: `~~ Define functions using Def.
+~~ Def works similarly to Let, except they must be
+~~ bound to a block.
+
+Def Hello ( Print "hello!" );
+
+~~ Call a function by writing its name directly.
+~~ There's no need to call Do.
+
+Hello;`,
+  lists: `~~ Lists in Cognate are constructed using
+~~ the List function, which takes a block, evaluates
+~~ it, then collects the remaining items in the stack
+~~ into a list.`,
 };
 
 // Taken from lodash

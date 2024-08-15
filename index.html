@@ -104,10 +104,20 @@
         <div style="grid-area: select;" class="grid-item">
           <select id="select-example" name="example">
             <option value="custom" selected>Custom</option>
-            <option value="hanoi">Hanoi</option>
-            <option value="fizzbuzz">Fizzbuzz</option>
-            <option value="primes">Primes</option>
-            <option value="fib">Fibonacci</option>
+            <optgroup label="Types">
+              <option value="numbers">Numbers</option>
+              <option value="variables">Variables</option>
+              <option value="strings">Strings</option>
+              <option value="blocks">Blocks</option>
+              <option value="functions">Functions</option>
+              <option value="lists">Lists</option>
+            </optgroup>
+            <optgroup label="Examples">
+              <option value="hanoi">Hanoi</option>
+              <option value="fizzbuzz">Fizzbuzz</option>
+              <option value="primes">Primes</option>
+              <option value="fib">Fibonacci</option>
+            </optgroup>
           </select>
         </div>
         <div style="grid-area: input" class="grid-item" id="input-container">
