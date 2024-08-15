@@ -319,7 +319,7 @@ export function initIdent2kind(preludeEnv) {
     }
   ));
   completions.push(snippetCompletion(
-    "Def ${Name} (${});",
+    "Def ${Name} (\n\t${}\n);",
     {
       label: "Def",
       type: "snippet",
