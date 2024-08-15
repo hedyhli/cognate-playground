@@ -226,7 +226,7 @@ export const Builtins = {
       if (a < 0 || b < 0 || a > b || a > max) {
         return { error: `invalid range: ${a}..=${b}` };
       }
-      return s.value.substr(a, b+1);
+      return s.value.substr(a, b-a+1);
     },
   },
   Ordinal: {

@@ -83,7 +83,6 @@ const coreExtensions = [
 
   markFieldExtension,
   linterPlugin,
-  cmLint.lintGutter(),
 ];
 
 const markKinds = {
