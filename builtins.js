@@ -91,6 +91,21 @@ export const Builtins = {
     returns: 'number',
     fn: a => a.value < 0 ? { error: "sqrt of a negative number" } : Math.sqrt(a.value),
   },
+  Floor: {
+    params: [{name: 'operand', type: 'number'}],
+    returns: 'number',
+    fn: a => Math.floor(a.value),
+  },
+  Ceiling: {
+    params: [{name: 'operand', type: 'number'}],
+    returns: 'number',
+    fn: a => Math.ceil(a.value),
+  },
+  Random: {
+    params: [{name: 'start', type: 'number'}, {name: 'end', type: 'number'}],
+    returns: 'number',
+    fn: (a, b) => a.value > b.value ? { error: `invalid range ${a.value}..${b.value}` } : Math.floor(Math.random() * (b.value - a.value)) + a.value,
+  },
   "==": {
     params: [{name: 'operand', type: 'any'}, {name: 'operand', type: 'any'}],
     returns: 'boolean',
