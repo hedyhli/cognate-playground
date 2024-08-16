@@ -456,6 +456,7 @@ function resolve(item, rawString) {
       // Otherwise, fall through
     }
     case 'number':
+      return value2object.string(item.value.toString());
     case 'symbol':
       return value2object.string(item.value);
     case 'boolean':
@@ -491,7 +492,7 @@ function parse(tree, env, userCode) {
   const root = tree.rootNode;
   let bail = false;
 
-  let rootBlock = node2object.block([], [], false);
+  let rootBlock = node2object.block([], {}, false);
   rootBlock.env = userCode ? {...env} : env;
 
   function inner(node, currentBlock) {
