@@ -443,7 +443,7 @@ function rawStringify(str) {
 }
 
 // Object to string for the output
-function resolve(item, rawString) {
+function resolve(item, quotedString) {
   if (item == undefined) {
     return undefined;
   }
@@ -454,7 +454,7 @@ function resolve(item, rawString) {
     case 'string': {
       if (item.style) // This string is already styled by Show/resolve()
         return item;
-      if (rawString) {
+      if (quotedString) {
         // convert back string escapes
         return value2object.string(rawStringify(item.value));
       }
@@ -468,7 +468,7 @@ function resolve(item, rawString) {
       return value2object.string(item.value ? 'True' : 'False', Style.marked);
     case 'list':
       /// XXX: Does not support unknown item type within the map call.
-      return value2object.string(`(${[...item.list].reverse().map(item => resolve(item).value).join(', ')})`);
+      return value2object.string(`(${[...item.list].reverse().map(item => resolve(item, true).value).join(', ')})`);
       // TODO: This can't be used with `Show` because it should
       // return a single string object and it can't currently supported
       // styling of different segments.
@@ -867,7 +867,7 @@ function process(/*readonly*/ currentBlock, op, modifyEnv) {
           // I/O
           case 'Show': {
             let item = exists(op.pop(), 'value');
-            let str = resolve(item, true);
+            let str = resolve(item, false);
             if (str != undefined) {
               op.push(str);
             }
@@ -875,7 +875,7 @@ function process(/*readonly*/ currentBlock, op, modifyEnv) {
           }
           case 'Print': {
             let item = exists(op.pop(), 'value');
-            let str = resolve(item);
+            let str = resolve(item, false);
             if (str != undefined) {
               Output.add(str);
               Output.newline();
@@ -886,7 +886,7 @@ function process(/*readonly*/ currentBlock, op, modifyEnv) {
           }
           case 'Put': {
             let item = exists(op.pop(), 'value');
-            let str = resolve(item);
+            let str = resolve(item, false);
             if (str != undefined) {
               Output.add(str);
             } else {
