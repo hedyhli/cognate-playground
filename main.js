@@ -904,7 +904,7 @@ function process(/*readonly*/ currentBlock, op, modifyEnv) {
           case 'Block?':
           case 'List?':
           case 'Boolean?': {
-            let a = exists(op[op.length-1], 'value');
+            let a = exists(op.pop(), 'value');
             let type = item.value.slice(0, item.value.length-1).toLowerCase();
             if (a != undefined)
               op.push(value2object.boolean(a.type == type));
