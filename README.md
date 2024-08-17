@@ -46,7 +46,7 @@ Implementation
 - [X] String escape sequences
 - [ ] Prevent stack overflows
 - [ ] Optimizations on the stack before parsing
-- [ ] Consider feasibility of transpiling to JS
+- [ ] Consider feasibility of transpiling to JS or use bytecode
 - [ ] Standard library coverage
 - [X] Closures
 - [ ] Tests
@@ -62,7 +62,7 @@ Others
       to prevent blocking input, such as merging several successive edits in
       one, or implementing a `Run` button.
 - [X] (1) Highlight references of functions in scope
-- [ ] Show parser errors inline in the editor
+- [X] Show parser errors inline in the editor
 - [ ] More informative runtime errors
 - [X] Fix (1); highlight with static analysis rather than at runtime
 - [ ] [perf] Find ways to accurate cache for (1)

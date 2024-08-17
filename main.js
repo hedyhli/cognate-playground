@@ -331,6 +331,7 @@ function execPrelude() {
   // Parse
   const preludeTree = App.ts.parser.parse(App.prelude);
   Errors = [];
+  // TODO: cleanup this mess
   App.preludeEnv = {};
   let result = parse(preludeTree);
   redrawErrors();
@@ -365,9 +366,11 @@ function redraw(code, edited) {
   App.tree = App.ts.parser.parse(code, App.tree);
   let result = parse(App.tree, true);
   analyzeBlock(result.rootBlock);
+  // TODO: cleanup this mess
   let rootBlock = { env: App.preludeEnv }
   CM.applyMarks(true);
   redrawErrors();
+
   if (result.bail || Errors.length != 0) {
     $outputError.innerHTML = "<p>Error during parsing!</p>" + $outputError.innerHTML;
   } else {
@@ -541,9 +544,6 @@ function parse(tree, userCode) {
         break;
       case "statement":
         inStmt = true;
-        // XXX:
-        // Shouldn't this "pseudo" block use only its block?
-        // why doesn't the parent get referenced if it's not provided here?
         currentBlock.body.push(node2object.block([], currentBlock.predeclares, userCode));
         break;
       case "identifier":
@@ -615,6 +615,8 @@ function parse(tree, userCode) {
             }
           }
         } else if (item.type == 'block') {
+          // TODO: Remove parent block references, initialize predeclares directly in the
+          // env, and update analyzeBlock to use only fields env and env.parent.
           item.parent = currentBlock;
           item.env.parent = currentBlock.env;
         }
