@@ -297,13 +297,14 @@ const node2object = {
   block: (body, predec, userCode, parent) => ({
     type: 'block',
     body: body,
-    env: {},
+    env: { parent: parent ? parent.env : undefined },
     predeclares: predec,
     userCode: userCode,
     parent: parent,
   }),
 };
 
+// TODO: No longer necessary.
 const bindObject = {
   number: (predec, number) => { predec.type = 'number'; predec.value = number.value },
   string: (predec, string) => { predec.type = 'string'; predec.value = string.value },
@@ -331,14 +332,16 @@ function execPrelude() {
   const preludeTree = App.ts.parser.parse(App.prelude);
   Errors = [];
   App.preludeEnv = {};
-  let result = parse(preludeTree, App.preludeEnv);
+  let result = parse(preludeTree);
   redrawErrors();
   if (result.bail) {
     $outputError.innerHTML = "<p>Error when parsing the prelude!</p>" + $outputError.innerHTML;
     return
   }
+  App.preludeEnv = result.rootBlock.env;
+  App.preludeEnv.parent = undefined;
   // Exec
-  result = process(result.rootBlock, [], false);
+  result = process(result.rootBlock, [], true);
   if (result.error != '') {
     appendError(result.error);
     redrawErrors();
@@ -360,13 +363,16 @@ function redraw(code, edited) {
 
   // Parse
   App.tree = App.ts.parser.parse(code, App.tree);
-  let result = parse(App.tree, App.preludeEnv, true);
+  let result = parse(App.tree, true);
   analyzeBlock(result.rootBlock);
+  let rootBlock = { env: App.preludeEnv }
   CM.applyMarks(true);
   redrawErrors();
   if (result.bail || Errors.length != 0) {
     $outputError.innerHTML = "<p>Error during parsing!</p>" + $outputError.innerHTML;
   } else {
+    result.rootBlock.parent = rootBlock;
+    result.rootBlock.env.parent = App.preludeEnv;
     // Exec
     result = process(result.rootBlock, [], false);
     $outputDebug.innerHTML = _printArr(result.stack);
@@ -433,7 +439,6 @@ function _repr(item) {
 function rawStringify(str) {
   let chars = str.split('');
   let raw = chars.map((char) => stringEscapesReverse[char] || char).join('');
-  console.log(raw);
   return '"' + raw + '"';
 }
 
@@ -488,12 +493,11 @@ function resolve(item, rawString) {
 // within statements.
 //
 // The entire program has a root "block" representing the outer scope.
-function parse(tree, env, userCode) {
+function parse(tree, userCode) {
   const root = tree.rootNode;
   let bail = false;
 
-  let rootBlock = node2object.block([], {}, false);
-  rootBlock.env = userCode ? {...env} : env;
+  let rootBlock = node2object.block([], {}, userCode);
 
   function inner(node, currentBlock) {
     let inStmt = false;
@@ -540,7 +544,7 @@ function parse(tree, env, userCode) {
         // XXX:
         // Shouldn't this "pseudo" block use only its block?
         // why doesn't the parent get referenced if it's not provided here?
-        currentBlock.body.push(node2object.block([], currentBlock.predeclares, userCode, currentBlock));
+        currentBlock.body.push(node2object.block([], currentBlock.predeclares, userCode));
         break;
       case "identifier":
         if (userCode) {
@@ -609,8 +613,10 @@ function parse(tree, env, userCode) {
                 currentBlock.predeclares[previous.value] = item.value;
               }
             }
-          } else {
           }
+        } else if (item.type == 'block') {
+          item.parent = currentBlock;
+          item.env.parent = currentBlock.env;
         }
         currentBlock.body.push(item);
         previous = item;
@@ -667,26 +673,31 @@ function analyzeBlock(currentBlock) {
 
 // Execute a block within a possibly `scoped` environment, with an initial
 // stack `op`.
-function process(currentBlock, op, scoped) {
-  let env = scoped ? {...currentBlock.env} : currentBlock.env;
+function process(/*readonly*/ currentBlock, op, modifyEnv) {
+  let env = modifyEnv ? currentBlock.env : {parent: currentBlock.env.parent};
   let error = "";
 
   function getVar(item) {
     if (item.type == 'identifier') {
-      let value = env[item.value];
-      if (value != undefined) {
-        if (value.type == '_predeclared') {
-          error = `${textMarked(item.value)} used before declaration`;
-          Linter.addDiagnostic(item.node, "error", "variable used before declaration");
-          return undefined;
+      let e = env;
+      while (e) {
+        let value = e[item.value];
+
+        if (value != undefined) {
+          if (value.type == '_predeclared') {
+            error = `${textMarked(item.value)} used before declaration`;
+            Linter.addDiagnostic(item.node, "error", "variable used before declaration");
+            return undefined;
+          }
+          return value;
         }
-        return value;
-      } else {
-        // Should not happen, since these are already checked in analyzeBlock
-        error = `undefined symbol ${textMarked(escape(item.value))}`;
-        Linter.addDiagnostic(item.node, "error", "undefined symbol");
-        return undefined;
+        e = e.parent;
       }
+      // Should not happen, since these are already checked in analyzeBlock
+      // error = `undefined symbol ${textMarked(escape(item.value))}`;
+      // Linter.addDiagnostic(item.node, "error", "undefined symbol");
+      // return undefined;
+      return undefined;
     } else {
       return item;
     }
@@ -744,17 +755,31 @@ function process(currentBlock, op, scoped) {
   // Execute the block
   for (let s = 0; s < currentBlock.body.length; s++) {
     let item = currentBlock.body[s];
-    // console.log(item.value || item, _printArr(op));
     let next = currentBlock.body[s+1];
+
     if (error != "") {
       break;
     }
+
     switch (item.type) {
       case 'block': {
-        // Relying on shallow-copying to support the bind step for
-        // hoisting. (See `bindObject`.)
-        item.env = {...env};
-        op.push(item);
+        // XXX:
+        // Def M (
+        //   Def P;
+        //   Let N;
+        //   Print N;
+        //   P;
+        //   Do If == N 0
+        //     then ()
+        //     else (M (P) - 1 N);
+        // );
+        // M (Print "in P") 3;
+        op.push({
+          type: 'block',
+          body: item.body,
+          env: { ...item.env, parent: env },
+          predeclares: item.predeclares
+        });
         break;
       }
       case 'identifier':
@@ -764,15 +789,17 @@ function process(currentBlock, op, scoped) {
             continue;
           }
         }
-        if (env[item.value] && env[item.value].type == 'function') {
-          // Defined, and is a function.
-          let call_result = process(env[item.value].block, op, true);
-          if (call_result.error != "") {
-            error = `in ${textMarked(item.value)}: ${call_result.error}`;
-            break;
+        {
+          let fn = getVar(item);
+          if (fn && fn.type == 'function') {
+            let call_result = process(fn.block, op, false);
+            if (call_result.error != "") {
+              error = `in ${textMarked(item.value)}: ${call_result.error}`;
+              break;
+            }
+            op = call_result.stack;
+            continue;
           }
-          op = call_result.stack;
-          continue;
         }
         switch (item.value) {
           // Binding
@@ -815,7 +842,7 @@ function process(currentBlock, op, scoped) {
             }
 
             let list = [];
-            let result = process(block, list, true);
+            let result = process(block, list, false);
             if (result.error != "") {
               error = `in ${textMarked('List')}: ${result.error}`;
               break;
@@ -905,6 +932,8 @@ function process(currentBlock, op, scoped) {
               let a = getVar(item);
               if (a != undefined) {
                 op.push(a);
+              } else {
+                // Should not happen, since undefined symbols are caught in `analyzeBlock`
               }
             }
             break;
