@@ -294,33 +294,17 @@ const node2object = {
     node: node,
     userCode: userCode,
   }),
-  block: (body, predec, userCode, parent) => ({
+  block: (body, userCode, parent) => ({
     type: 'block',
-    body: body,
+    body: body, // list of objects
+    // This env is a 'spec' of how the env should be initialized when
+    // the block is executed (again). **IT SHOULD NOT BE MUTATED DIRECTLY**.
+    //
+    // Parent of the outmost block of the user's code is the preludeEnv.
+    // The parent of that, in turn, in undefined.
     env: { parent: parent ? parent.env : undefined },
-    predeclares: predec,
     userCode: userCode,
-    parent: parent,
   }),
-};
-
-// TODO: No longer necessary.
-const bindObject = {
-  number: (predec, number) => { predec.type = 'number'; predec.value = number.value },
-  string: (predec, string) => { predec.type = 'string'; predec.value = string.value },
-  boolean: (predec, boolean) => { predec.type = 'boolean'; predec.value = boolean.value },
-  symbol: (predec, symbol) => { predec.type = 'symbol'; predec.value = symbol.value },
-  function: (predec, block) => {
-    predec.type = 'function';
-    predec.block = block;
-  },
-  block: (predec, block) => {
-    predec.type = 'block';
-    predec.body = block.body;
-    predec.env = block.env;
-    predec.predeclares = block.predeclares;
-  },
-  list: (predec, list) => { predec.type = 'list'; predec.list = list.list },
 };
 
 function execPrelude() {
@@ -331,18 +315,15 @@ function execPrelude() {
   // Parse
   const preludeTree = App.ts.parser.parse(App.prelude);
   Errors = [];
-  // TODO: cleanup this mess
-  App.preludeEnv = {};
+
   let result = parse(preludeTree);
-  redrawErrors();
-  if (result.bail) {
+  if (result.bail || Errors.length > 0) {
+    redrawErrors();
     $outputError.innerHTML = "<p>Error when parsing the prelude!</p>" + $outputError.innerHTML;
-    return
+    return;
   }
-  App.preludeEnv = result.rootBlock.env;
-  App.preludeEnv.parent = undefined;
   // Exec
-  result = process(result.rootBlock, [], true);
+  result = process(result.rootBlock, []);
   if (result.error != '') {
     appendError(result.error);
     redrawErrors();
@@ -350,6 +331,7 @@ function execPrelude() {
     $outputError.innerHTML = "<p>Parsing of prelude failed!</p>" + $outputError.innerHTML;
     return;
   }
+  App.preludeEnv = result.env;
 }
 
 function redraw(code, edited) {
@@ -365,19 +347,16 @@ function redraw(code, edited) {
   // Parse
   App.tree = App.ts.parser.parse(code, App.tree);
   let result = parse(App.tree, true);
+  result.rootBlock.env.parent = App.preludeEnv;
   analyzeBlock(result.rootBlock);
-  // TODO: cleanup this mess
-  let rootBlock = { env: App.preludeEnv }
   CM.applyMarks(true);
-  redrawErrors();
 
   if (result.bail || Errors.length != 0) {
+    redrawErrors();
     $outputError.innerHTML = "<p>Error during parsing!</p>" + $outputError.innerHTML;
   } else {
-    result.rootBlock.parent = rootBlock;
-    result.rootBlock.env.parent = App.preludeEnv;
     // Exec
-    result = process(result.rootBlock, [], false);
+    result = process(result.rootBlock, []);
     $outputDebug.innerHTML = _printArr(result.stack);
     if (result.error != '') {
       appendError(result.error);
@@ -439,10 +418,10 @@ function _repr(item) {
   }
 }
 
-function rawStringify(str) {
+function reprString(str) {
   let chars = str.split('');
-  let raw = chars.map((char) => stringEscapesReverse[char] || char).join('');
-  return '"' + raw + '"';
+  let quoted = chars.map((char) => stringEscapesReverse[char] || char).join('');
+  return '"' + quoted + '"';
 }
 
 // Object to string for the output
@@ -459,7 +438,7 @@ function resolve(item, quotedString) {
         return item;
       if (quotedString) {
         // convert back string escapes
-        return value2object.string(rawStringify(item.value));
+        return value2object.string(reprString(item.value));
       }
       // Otherwise, fall through
     }
@@ -500,7 +479,7 @@ function parse(tree, userCode) {
   const root = tree.rootNode;
   let bail = false;
 
-  let rootBlock = node2object.block([], {}, userCode);
+  let rootBlock = node2object.block([], userCode);
 
   function inner(node, currentBlock) {
     let inStmt = false;
@@ -540,11 +519,12 @@ function parse(tree, userCode) {
     switch (name) {
       case "block":
         inBlock = true;
-        currentBlock.body.push(node2object.block([], {}, userCode, currentBlock));
+        currentBlock.body.push(node2object.block([], userCode, currentBlock));
         break;
       case "statement":
         inStmt = true;
-        currentBlock.body.push(node2object.block([], currentBlock.predeclares, userCode));
+        currentBlock.body.push(node2object.block([], userCode));
+        currentBlock.body[currentBlock.body.length-1].env = currentBlock.env;
         break;
       case "identifier":
         if (userCode) {
@@ -594,6 +574,7 @@ function parse(tree, userCode) {
       node.children.forEach((child, c) => inner(child, pushto));
 
       let stmt = currentBlock.body.pop();
+
       for(let i = stmt.body.length-1; i>=0; i--) {
         let item = stmt.body[i];
         let previous = stmt.body[i+1];
@@ -605,19 +586,16 @@ function parse(tree, userCode) {
               bail = true;
               return;
             } else {
-              if (currentBlock.predeclares[previous.value]) {
+              if (currentBlock.env[previous.value]) {
                 appendError(`${item.value} ${textMarked(previous.value)}: cannot shadow in the same block`);;
                 Linter.addDiagnostic(previous.node, "error", "cannot shadow in the same block");
                 bail = true;
               } else {
-                currentBlock.predeclares[previous.value] = item.value;
+                currentBlock.env[previous.value] = { type: '_predeclared', kind: item.value };
               }
             }
           }
         } else if (item.type == 'block') {
-          // TODO: Remove parent block references, initialize predeclares directly in the
-          // env, and update analyzeBlock to use only fields env and env.parent.
-          item.parent = currentBlock;
           item.env.parent = currentBlock.env;
         }
         currentBlock.body.push(item);
@@ -648,19 +626,23 @@ function analyzeBlock(currentBlock) {
     }
     if (item.type == 'identifier' && ident2kind[item.value] == undefined) {
       let foundDecl = false;
-      let block = currentBlock;
-      while (block) {
+      let e = currentBlock.env;
+      while (e) {
         // TODO
         // PERF: find ways to cache
-        if (block.predeclares[item.value] == 'Let') {
-          foundDecl = true;
-          break;
-        } else if (block.predeclares[item.value] == 'Def') {
-          foundDecl = true;
-          CM.addMark(item.node, "function");
+        if (e[item.value]) {
+          switch (e[item.value].kind) {
+            case 'Let':
+              foundDecl = true;
+              break;
+            case 'Def':
+              foundDecl = true;
+              CM.addMark(item.node, "function");
+              break;
+          }
           break;
         }
-        block = block.parent;
+        e = e.parent;
       }
       if (!foundDecl) {
         appendError(`undefined symbol ${textMarked(escape(item.value))}`);
@@ -675,8 +657,8 @@ function analyzeBlock(currentBlock) {
 
 // Execute a block within a possibly `scoped` environment, with an initial
 // stack `op`.
-function process(/*readonly*/ currentBlock, op, modifyEnv) {
-  let env = modifyEnv ? currentBlock.env : {parent: currentBlock.env.parent};
+function process(/*readonly*/ currentBlock, op) {
+  let env = {...currentBlock.env, parent: currentBlock.env.parent};
   let error = "";
 
   function getVar(item) {
@@ -749,11 +731,6 @@ function process(/*readonly*/ currentBlock, op, modifyEnv) {
     }
   }
 
-  // Predeclare names
-  for (let name of Object.keys(currentBlock.predeclares)) {
-    env[name] = { type: '_predeclared' };
-  }
-
   // Execute the block
   for (let s = 0; s < currentBlock.body.length; s++) {
     let item = currentBlock.body[s];
@@ -765,7 +742,7 @@ function process(/*readonly*/ currentBlock, op, modifyEnv) {
 
     switch (item.type) {
       case 'block': {
-        // XXX:
+        // XXX: Fix for:
         // Def M (
         //   Def P;
         //   Let N;
@@ -780,7 +757,6 @@ function process(/*readonly*/ currentBlock, op, modifyEnv) {
           type: 'block',
           body: item.body,
           env: { ...item.env, parent: env },
-          predeclares: item.predeclares
         });
         break;
       }
@@ -794,7 +770,7 @@ function process(/*readonly*/ currentBlock, op, modifyEnv) {
         {
           let fn = getVar(item);
           if (fn && fn.type == 'function') {
-            let call_result = process(fn.block, op, false);
+            let call_result = process(fn.block, op);
             if (call_result.error != "") {
               error = `in ${textMarked(item.value)}: ${call_result.error}`;
               break;
@@ -817,7 +793,7 @@ function process(/*readonly*/ currentBlock, op, modifyEnv) {
               error = `in ${textMarked('Def')}: ${error}`;
               break;
             }
-            bindObject.function(env[a.value], b);
+            env[a.value] = { type: 'function', block: b };
             break;
           }
           case 'Let': {
@@ -831,7 +807,7 @@ function process(/*readonly*/ currentBlock, op, modifyEnv) {
               error = `in ${textMarked('Let')}: expected value to set`;
               break;
             }
-            bindObject[b.type](env[a.value], b);
+            env[a.value] = {...b};
             break;
           }
 
@@ -844,7 +820,7 @@ function process(/*readonly*/ currentBlock, op, modifyEnv) {
             }
 
             let list = [];
-            let result = process(block, list, false);
+            let result = process(block, list);
             if (result.error != "") {
               error = `in ${textMarked('List')}: ${result.error}`;
               break;
@@ -927,7 +903,6 @@ function process(/*readonly*/ currentBlock, op, modifyEnv) {
 
           default: {
             if (Builtins[item.value]) {
-              // TODO: Allow shadowing builtins and preludes
               handleBuiltin(item.value);
               break;
             } else {
@@ -948,7 +923,7 @@ function process(/*readonly*/ currentBlock, op, modifyEnv) {
     };
   }
 
-  return {stack: op, error: error};
+  return {stack: op, error: error, env: env};
 }
 
 //////////////////////////////////////////////////////////////////////
