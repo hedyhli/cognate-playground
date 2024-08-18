@@ -17,6 +17,7 @@ export const value2object = {
   // And this.
   symbol: value => ({ type: 'symbol', value: value }),
   list: list => ({ type: 'list', list: list }),
+  box: value => ({ type: 'box', value: [value] }),
   any: anything => anything,
 };
 
@@ -315,6 +316,8 @@ export function initIdent2kind(preludeEnv) {
     "Show",
     "Put",
     "List",
+    "Box",
+    "Unbox",
     "Stack",
     "Clear",
   ].forEach(name => { ident2kind[name] = "builtin" });

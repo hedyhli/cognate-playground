@@ -42,7 +42,7 @@ Implementation
 - [X] Update Prelude from upstream
 - [X] Add `Stack`
 - [X] Add string methods
-- [ ] Support `Box` and a proper `Set`
+- [X] Support `Box` and a proper `Set`
 - [X] String escape sequences
 - [ ] Prevent stack overflows
 - [ ] Optimizations on the stack before parsing

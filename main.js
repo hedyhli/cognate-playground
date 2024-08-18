@@ -365,6 +365,7 @@ function redraw(code, edited) {
     redrawErrors();
     if (result.error != '') {
       appendError(result.error);
+      redrawErrors();
       $outputError.innerHTML = "<p>Runtime error!</p>" + $outputError.innerHTML;
     }
   }
@@ -417,6 +418,8 @@ function _repr(item) {
       return `\\${escape(item.value)}`;
     case 'list':
       return "(" + [...item.list].reverse().map(_repr).join(", ") + ")"
+    case 'box':
+      return "<" + _repr(item.value[0]) + ">";
     default:
       return textLight(`(unknown item of type ${textMarked(escape(item.type))})`);
   }
@@ -452,6 +455,11 @@ function resolve(item, quotedString) {
       return value2object.string(item.value);
     case 'boolean':
       return value2object.string(item.value ? 'True' : 'False', Style.marked);
+    case 'box': {
+      let s = resolve(item.value[0], quotedString);
+      s.value = `<${s.value}>`;
+      return s;
+    }
     case 'list':
       /// XXX: Does not support unknown item type within the map call.
       return value2object.string(`(${[...item.list].reverse().map(item => resolve(item, true).value).join(', ')})`);
@@ -771,7 +779,7 @@ function process(/*readonly*/ currentBlock, op) {
       }
       case 'identifier':
         if (next != undefined && next.type == 'identifier') {
-          if (['Def', 'Let', 'Set'].includes(next.value)) {
+          if (['Def', 'Let'].includes(next.value)) {
             op.push(item);
             continue;
           }
@@ -819,8 +827,22 @@ function process(/*readonly*/ currentBlock, op) {
             env[a.value] = {...b};
             break;
           }
+          case 'Set': {
+            let a = expect(exists(op.pop(), 'box'), 'box');
+            if (a == undefined) {
+              error = `in ${textMarked('Set')}: ${error}`;
+              break;
+            }
+            let b = op.pop();
+            if (b == undefined) {
+              error = `in ${textMarked('Set')}: expected value to set`;
+              break;
+            }
+            a.value[0] = b;
+            break;
+          }
 
-          // Blocks
+          // Special types
           case 'List': {
             let block = expect(exists(op.pop(), 'block'), 'block');
             if (block == undefined) {
@@ -835,6 +857,24 @@ function process(/*readonly*/ currentBlock, op) {
               break;
             }
             op.push(value2object.list(list));
+            break;
+          }
+          case 'Box': {
+            let value = exists(op.pop(), 'value');
+            if (value == undefined) {
+              error = `in ${textMarked('Box')}: ${error}`;
+              break;
+            }
+            op.push(value2object.box(value));
+            break;
+          }
+          case 'Unbox': {
+            let box = expect(exists(op.pop(), 'box'), 'box');
+            if (box == undefined) {
+              error = `in ${textMarked('Unbox')}: ${error}`;
+              break;
+            }
+            op.push(box.value[0]);
             break;
           }
 
