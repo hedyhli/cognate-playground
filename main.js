@@ -196,16 +196,16 @@ Print "\\nConverting a character to and from its UTF16 code:";
 Print Character Ordinal "A";
 
 ~~ String escape sequences:
-~~ \\a, \\b, \\t, \\n, \\r, \\", \\v, \\\\
+~~ \\b, \\t, \\n, \\r, \\", \\v, \\\\
 ~~ ...are supported. A backslash followed by a
 ~~ character other than any of these will be
 ~~ treated literally.
 ~~
 ~~ You can see string escape sequences in action
 ~~ above.
-
-Print "\\nShow strings literally using Show:";
-Print Show "1 2 \\t 3 \\n 4";
+~~
+~~ Note that '\\a' that is supported by CognaC,
+~~ is not supported here in the playground.
 `,
   blocks: `~~ Blocks are denoted with (). They will not
 ~~ be evaluated until you call Do.
@@ -227,7 +227,11 @@ Hello;`,
   lists: `~~ Lists in Cognate are constructed using
 ~~ the List function, which takes a block, evaluates
 ~~ it, then collects the remaining items in the stack
-~~ into a list.`,
+~~ into a list.
+
+Print "\\nShow strings literally when in a list:";
+Print List ("1 2 \\t 3 \\n 4");
+`,
 };
 
 // Taken from lodash
@@ -260,8 +264,8 @@ function textMarked(text) {
   return `<span style='color: var(--marked)'>${text}</span>`;
 }
 
-const stringEscapes = {a: '\a', b: '\b', t: '\t', n: '\n', v: '\v', f: '\f', r: '\r', '"': '"', '\\': '\\'};
-const stringEscapesReverse = {'\a': '\\a', '\b': '\\b', '\t': '\\t', '\n': '\\n', '\v': '\\v', '\f': '\\f', '\r': '\\r', '"': '\\"', '\\': '\\\\'};
+const stringEscapes = {b: '\b', t: '\t', n: '\n', v: '\v', f: '\f', r: '\r', '"': '"', '\\': '\\'};
+const stringEscapesReverse = {'\b': '\\b', '\t': '\\t', '\n': '\\n', '\v': '\\v', '\f': '\\f', '\r': '\\r', '"': '\\"', '\\': '\\\\'};
 
 const node2object = {
   number: (node, userCode) => ({
@@ -350,17 +354,17 @@ function redraw(code, edited) {
   result.rootBlock.env.parent = App.preludeEnv;
   analyzeBlock(result.rootBlock);
   CM.applyMarks(true);
+  redrawErrors();
 
   if (result.bail || Errors.length != 0) {
-    redrawErrors();
     $outputError.innerHTML = "<p>Error during parsing!</p>" + $outputError.innerHTML;
   } else {
     // Exec
     result = process(result.rootBlock, []);
     $outputDebug.innerHTML = _printArr(result.stack);
+    redrawErrors();
     if (result.error != '') {
       appendError(result.error);
-      redrawErrors();
       $outputError.innerHTML = "<p>Runtime error!</p>" + $outputError.innerHTML;
     }
   }
@@ -546,6 +550,11 @@ function parse(tree, userCode) {
             // XXX: nodes of other types ignored?
             if (child.type == 'escape_sequence') {
               let esc = child.text.substr(1);
+              if (stringEscapes[esc] == undefined) {
+                // This version of cognate will not be able to support all
+                // escape sequences cognac does, such as the terminal bell.
+                continue;
+              }
               let startIndex = child.startPosition.column - node.startPosition.column;
               finalStr += str.substr(start, startIndex - start);
               finalStr += stringEscapes[esc];
