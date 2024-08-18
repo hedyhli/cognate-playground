@@ -318,6 +318,7 @@ export function initIdent2kind(preludeEnv) {
     "List",
     "Box",
     "Unbox",
+    "Regex",
     "Stack",
     "Clear",
   ].forEach(name => { ident2kind[name] = "builtin" });

@@ -877,6 +877,41 @@ function process(/*readonly*/ currentBlock, op) {
             op.push(box.value[0]);
             break;
           }
+          case 'Regex': {
+            let s = expect(exists(op.pop(), 'regex string'), 'string');
+            if (s.value.length == 0) {
+              /// Not supported by CognaC
+              error = `in ${textMarked('Regex')}: empty regex is invalid`;
+              break;
+            }
+            let regex;
+            try {
+              regex = new RegExp(s.value);
+            } catch (err) {
+              error = `in ${textMarked('Regex')}: regex compile error: ${err}`;
+              break;
+            }
+            op.push({
+              type: 'block',
+              body: [{type: 'identifier', value: '_applyRegex'}],
+              env: {regex},
+            });
+            break;
+          }
+          case '_applyRegex': {
+            let regex = env.regex;
+            if (regex == undefined) {
+              error = "internal error when applying regex!";
+              break;
+            }
+            let s = expect(exists(op.pop(), 'string'), 'string');
+            if (s == undefined) {
+              error = `in applying regex: ${error}`;
+              break;
+            }
+            op.push(value2object.boolean(regex.test(s.value)));
+            break;
+          }
 
           // Stack
           case 'Stack': {
