@@ -110,9 +110,26 @@ export const Builtins = {
     params: [{name: 'operand', type: 'any'}, {name: 'operand', type: 'any'}],
     returns: 'boolean',
     fn: (a, b) => {
-      if (a.type != b.type)
-        return { error: "left and right operands be of the same type" };
-      return a.value === b.value;
+      function _compare(x, y) {
+        if (x.type != y.type)
+          return false;
+        switch (x.type) {
+          case 'list': {
+            let l1 = x.list, l2 = y.list;
+            if (l1.length != l2.length)
+              return false;
+            return l1.every((a1, i) => _compare(a1, l2[i]));
+          }
+          case 'block':
+            // XXX: Cognac errors
+            return false;
+          case 'box':
+            return _compare(x.value[0], y.value[0]);
+          default:
+            return x.value === y.value;
+        }
+      }
+      return _compare(a, b);
     },
   },
   "!=": {
