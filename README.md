@@ -7,8 +7,8 @@ remains completely client-side.
 
 <img src="https://raw.githubusercontent.com/hedyhli/cognate-playground/main/demo.png" width=800 />
 
-It currently supports all types except Box, Dict, and I/O, and about 95% of all
-builtins from the C prelude.
+It currently supports about 80% of all builtins from the C prelude, and all
+types except Dict and IO.
 
 [Tree-sitter](https://github.com/hedyhli/tree-sitter-cognate) is used as the
 parser, and the the runtime written entirely in JavaScript.
