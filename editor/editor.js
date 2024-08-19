@@ -155,5 +155,6 @@ export const CM = {
     };
     return edit;
   },
+  getLine: (lineIndex) => view.state.doc.line(lineIndex + 1),
 };
 

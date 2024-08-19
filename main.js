@@ -25,7 +25,7 @@ const App = {
   // The select preset
   selectionChange: false,
   tree: null,
-  prelude: '',
+  preludeLines: [],
   preludeEnv: {},
   callStackSize: 0,
   fetchPrelude: () => {
@@ -33,8 +33,8 @@ const App = {
     fetch("prelude.cog")
       .then((res) => res.text())
       .then((text) => {
-        App.prelude = text;
-        execPrelude();
+        App.preludeLines = text.split('\n');
+        execPrelude(text);
         initIdent2kind(App.preludeEnv);
         redraw(Store.getInput());
       })
@@ -313,13 +313,13 @@ const node2object = {
   }),
 };
 
-function execPrelude() {
-  if (App.ts.parser == undefined || App.prelude == '') {
+function execPrelude(prelude) {
+  if (App.ts.parser == undefined || App.preludeLines.length == 0) {
     return;
   }
 
   // Parse
-  const preludeTree = App.ts.parser.parse(App.prelude);
+  const preludeTree = App.ts.parser.parse(prelude);
   Errors = [];
 
   let result = parse(preludeTree);
@@ -341,7 +341,7 @@ function execPrelude() {
 }
 
 function redraw(code, edited) {
-  if (App.ts.parser == undefined || App.prelude == '') {
+  if (App.ts.parser == undefined || App.preludeLines.length == 0) {
     return;
   }
 
