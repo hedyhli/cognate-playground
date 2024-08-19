@@ -82,10 +82,20 @@ export const Builtins = {
     returns: 'number',
     fn: (a, b) => a.value * b.value,
   },
+  "^": {
+    params: [{name: 'operand', type: 'number'}, {name: 'operand', type: 'number'}],
+    returns: 'number',
+    fn: (a, b) => a.value ** b.value,
+  },
   Modulo: {
     params: [{name: 'operand', type: 'number'}, {name: 'operand', type: 'number'}],
     returns: 'number',
     fn: (a, b) => a.value == 0 ? { error: "modulo by zero" } : b.value % a.value,
+  },
+  Exp: {
+    params: [{name: 'operand', type: 'number'}],
+    returns: 'number',
+    fn: a => Math.exp(a.value),
   },
   Sqrt: {
     params: [{name: 'operand', type: 'number'}],
@@ -325,7 +335,7 @@ export function initIdent2kind(preludeEnv) {
 
   Object.keys(preludeEnv).forEach((name) => { ident2kind[name] = "builtin" });
 
-  "+ - * / > < == != >= <=".split(" ").forEach(op => { ident2kind[op] = "operator" });
+  "+ - * / > < == != >= <= ^".split(" ").forEach(op => { ident2kind[op] = "operator" });
 
   [
     "Def",
