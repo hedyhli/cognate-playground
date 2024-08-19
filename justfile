@@ -10,7 +10,7 @@ up:
   pnpm dev
 
 wasm:
-  cp ../tree-sitter-cognate/tree-sitter-cognate.wasm .
+  cp ../tree-sitter-cognate/tree-sitter-cognate.wasm ./public/
 
 prelude:
-  cp ../cognate/src/prelude.cog .
+  cp ../cognate/src/prelude.cog ./public/
