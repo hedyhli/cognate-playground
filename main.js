@@ -7,13 +7,14 @@ import './simple.min.css';
 import { CM, Linter } from './editor/editor.js';
 import { ident2kind, Builtins, initIdent2kind, normalizeIdentifier, value2object } from './builtins.js';
 
-const $selectExample = document.getElementById("select-example")
-const $output = document.getElementById("output")
-const $outputError = document.getElementById("output-error")
-const $outputDebug = document.getElementById("output-debug")
+const $selectExample = document.getElementById("select-example");
+const $output = document.getElementById("output");
+const $outputError = document.getElementById("output-error");
+const $outputDebug = document.getElementById("output-debug");
 
 const CALLSTACK_LIMIT = 3000;
 const STORAGE_KEY = "cognate-playground";
+
 const Store = {
   getInput: () => JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}').custom || 'Print "Hello, world!";',
   saveInput: (newInput) => {
@@ -333,7 +334,7 @@ function execPrelude(prelude) {
   if (result.error != '') {
     appendError(result.error);
     redrawErrors();
-    $outputDebug.innerHTML = _printArr(result.stack);
+    $outputDebug.innerHTML = reprArr(result.stack);
     $outputError.innerHTML = "<p>Parsing of prelude failed!</p>" + $outputError.innerHTML;
     return;
   }
@@ -364,7 +365,7 @@ function redraw(code, edited) {
     // Exec
     App.callStackSize = 0;
     result = process(result.rootBlock, []);
-    $outputDebug.innerHTML = _printArr(result.stack);
+    $outputDebug.innerHTML = reprArr(result.stack);
     redrawErrors();
     if (result.error != '') {
       appendError(result.error);
@@ -379,17 +380,11 @@ function redraw(code, edited) {
     Store.saveInput(code);
 }
 
-// Return a string representation of a nested array, with each root element on
-// another line.
-function printArr(arr) {
-  return arr.map((item) => (item.type == 'block') ? _printArr(item.body) : _repr(item)).join("\n");
-}
-
-// Represent a stack in a single line.
-function _printArr(arr) {
+// Represent a stack in a single line as a string.
+function reprArr(arr) {
   let output = "";
 
-  const iter = (item, i) => {
+  const iter = item => {
     if (item.type == 'block') {
       output += "[";
       if (item.body.length > 0) {
@@ -398,7 +393,7 @@ function _printArr(arr) {
       }
       output += "], ";
     } else {
-      output += `${_repr(item)}, `;
+      output += `${repr(item)}, `;
     }
   };
   arr.forEach(iter);
@@ -407,7 +402,7 @@ function _printArr(arr) {
 }
 
 // Object to string for displaying the stack & debugging
-function _repr(item) {
+function repr(item) {
   switch (item.type) {
     case 'identifier':
       return escape(item.value);
@@ -420,9 +415,9 @@ function _repr(item) {
     case 'symbol':
       return `\\${escape(item.value)}`;
     case 'list':
-      return "(" + [...item.list].reverse().map(_repr).join(", ") + ")"
+      return "(" + [...item.list].reverse().map(repr).join(", ") + ")"
     case 'box':
-      return "<" + _repr(item.value[0]) + ">";
+      return "<" + repr(item.value[0]) + ">";
     default:
       return textLight(`(unknown item of type ${textMarked(escape(item.type))})`);
   }
@@ -591,7 +586,7 @@ function parse(tree, userCode) {
 
     if (inStmt) {
       let pushto = currentBlock.body[currentBlock.body.length-1];
-      node.children.forEach((child, c) => inner(child, pushto));
+      node.children.forEach(child => inner(child, pushto));
 
       let stmt = currentBlock.body.pop();
 
@@ -624,10 +619,10 @@ function parse(tree, userCode) {
 
     } else if (inBlock) {
       let pushto = currentBlock.body[currentBlock.body.length-1];
-      node.children.forEach((child, c) => inner(child, pushto));
+      node.children.forEach(child => inner(child, pushto));
 
     } else if (node.type == 'source_file') {
-      node.children.forEach((child, c) => inner(child, currentBlock));
+      node.children.forEach(child => inner(child, currentBlock));
 
     } else {
       // XXX: nodes of other types ignored?
@@ -1028,6 +1023,6 @@ $selectExample.addEventListener("change", function () {
   CM.setText(newContent);
 });
 
-document.addEventListener("DOMContentLoaded", async function (event) {
+document.addEventListener("DOMContentLoaded", async function (_) {
   await App.init();
 });
