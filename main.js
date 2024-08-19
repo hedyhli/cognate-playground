@@ -562,7 +562,7 @@ function parse(tree, userCode) {
             if (child.type == 'escape_sequence') {
               let esc = child.text.substr(1);
               if (stringEscapes[esc] == undefined) {
-                // This version of cognate will not be able to support all
+                // This implementation of cognate will not be able to support all
                 // escape sequences cognac does, such as the terminal bell.
                 continue;
               }
