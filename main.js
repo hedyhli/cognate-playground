@@ -12,6 +12,7 @@ const $output = document.getElementById("output")
 const $outputError = document.getElementById("output-error")
 const $outputDebug = document.getElementById("output-debug")
 
+const CALLSTACK_LIMIT = 3000;
 const STORAGE_KEY = "cognate-playground";
 const Store = {
   getInput: () => JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}').custom || 'Print "Hello, world!";',
@@ -26,6 +27,7 @@ const App = {
   tree: null,
   prelude: '',
   preludeEnv: {},
+  callStackSize: 0,
   fetchPrelude: () => {
     // TODO: Error message on failure.
     fetch("prelude.cog")
@@ -360,6 +362,7 @@ function redraw(code, edited) {
     $outputError.innerHTML = "<p>Error during parsing!</p>" + $outputError.innerHTML;
   } else {
     // Exec
+    App.callStackSize = 0;
     result = process(result.rootBlock, []);
     $outputDebug.innerHTML = _printArr(result.stack);
     redrawErrors();
@@ -677,6 +680,11 @@ function analyzeBlock(currentBlock) {
 function process(/*readonly*/ currentBlock, op) {
   let env = {...currentBlock.env, parent: currentBlock.env.parent};
   let error = "";
+
+  App.callStackSize += 1;
+  if (App.callStackSize == CALLSTACK_LIMIT) {
+    error = "call stack overflowed!";
+  }
 
   function getVar(item) {
     if (item.type == 'identifier') {
@@ -1007,6 +1015,7 @@ function process(/*readonly*/ currentBlock, op) {
     };
   }
 
+  App.callStackSize -= 1;
   return {stack: op, error: error, env: env};
 }
 

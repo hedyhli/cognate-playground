@@ -44,7 +44,7 @@ Implementation
 - [X] Add string methods
 - [X] Support `Box` and a proper `Set`
 - [X] String escape sequences
-- [ ] Prevent stack overflows
+- [X] Prevent stack overflows
 - [ ] Optimizations on the stack before parsing
 - [ ] Consider feasibility of transpiling to JS or use bytecode
 - [ ] Standard library coverage
