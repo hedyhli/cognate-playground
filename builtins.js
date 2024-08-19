@@ -331,6 +331,7 @@ export function initIdent2kind(preludeEnv) {
     "Regex",
     "Stack",
     "Clear",
+    "Error",
   ].forEach(name => { ident2kind[name] = "builtin" });
 
   Object.keys(preludeEnv).forEach((name) => { ident2kind[name] = "builtin" });

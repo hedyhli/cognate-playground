@@ -916,7 +916,7 @@ function process(/*readonly*/ currentBlock, op) {
             break;
           }
 
-          // Stack
+          // Special
           case 'Stack': {
             let list = [...op];
             op.push(value2object.list(list));
@@ -925,6 +925,16 @@ function process(/*readonly*/ currentBlock, op) {
           case 'Clear': {
             while (op.length > 0) {
               op.pop();
+            }
+            break;
+          }
+          case 'Error': {
+            let msg = expect(exists(op.pop(), 'error message'), 'string');
+            if (msg == undefined) {
+              // How ironic
+              error = `in ${textMarked('Error')}: ${error}`;
+            } else {
+              error = msg.value;
             }
             break;
           }
