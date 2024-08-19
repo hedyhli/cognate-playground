@@ -11,7 +11,7 @@ It currently supports about 80% of all builtins from the C prelude, and all
 types except Dict and IO.
 
 [Tree-sitter](https://github.com/hedyhli/tree-sitter-cognate) is used as the
-parser, and the the runtime written entirely in JavaScript.
+parser and the runtime is written entirely in JavaScript.
 
 Files of interest
 - index.html
