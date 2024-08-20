@@ -353,20 +353,21 @@ function redraw(code, edited) {
 
   // Parse
   App.tree = App.ts.parser.parse(code, App.tree);
-  let result = parse(App.tree, true);
-  result.rootBlock.env.parent = App.preludeEnv;
+  let result = parse(App.tree, App.preludeEnv, true);
   analyzeBlock(result.rootBlock);
   CM.applyMarks(true);
   redrawErrors();
 
   if (result.bail || Errors.length != 0) {
     $outputError.innerHTML = "<p>Error during parsing!</p>" + $outputError.innerHTML;
+
   } else {
     // Exec
     App.callStackSize = 0;
     result = process(result.rootBlock, []);
     $outputDebug.innerHTML = reprArr(result.stack);
     redrawErrors();
+
     if (result.error != '') {
       appendError(result.error);
       redrawErrors();
@@ -485,11 +486,12 @@ function resolve(item, quotedString) {
 // within statements.
 //
 // The entire program has a root "block" representing the outer scope.
-function parse(tree, userCode) {
+function parse(tree, rootEnv, userCode) {
   const root = tree.rootNode;
   let bail = false;
 
   let rootBlock = node2object.block([], userCode);
+  rootBlock.env.parent = rootEnv;
 
   function inner(node, currentBlock) {
     let inStmt = false;
