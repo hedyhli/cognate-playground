@@ -334,7 +334,8 @@ export function initIdent2kind(preludeEnv) {
     "Error",
   ].forEach(name => { ident2kind[name] = "builtin" });
 
-  Object.keys(preludeEnv).forEach((name) => { ident2kind[name] = "builtin" });
+  if (preludeEnv)
+    Object.keys(preludeEnv).forEach((name) => { ident2kind[name] = "builtin" });
 
   "+ - * / > < == != >= <= ^".split(" ").forEach(op => { ident2kind[op] = "operator" });
 

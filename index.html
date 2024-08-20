@@ -99,7 +99,22 @@
       .cm-editor {
         height: 100%;
       }
+
+      .hidden {
+        display: none;
+      }
       </style>
+      <div class="notice hidden" id="external-error-box" style="background-color: #352d1b; font-size: .9rem">
+        <style>
+        #external-error p {
+          margin: 0;
+          margin-top: 1rem;
+        }
+        </style>
+        <h6 style="margin-bottom: 0; margin-top: -.5rem">Warning</h6>
+        <div id="external-error" style="line-height: 1; margin-bottom: 1rem"></div>
+        <a id="notice-dismiss" href="#">Dismiss</a>
+      </div>
       <div class="container">
         <div style="grid-area: select;" class="grid-item">
           <select id="select-example" name="example">

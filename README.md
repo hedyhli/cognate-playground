@@ -66,4 +66,5 @@ Others
 - [ ] More informative runtime errors
 - [X] Fix (1); highlight with static analysis rather than at runtime
 - [ ] [perf] Find ways to accurate cache for (1)
-- [ ] Suggest local variables and functions in autocomplete
+- [X] Handle failure to fetch prelude
+- [ ] Fix tree-sitter edit conversions for pair wrapping (editor feature)

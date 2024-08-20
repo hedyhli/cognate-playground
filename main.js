@@ -9,6 +9,9 @@ import { ident2kind, Builtins, initIdent2kind, normalizeIdentifier, value2object
 
 const $selectExample = document.getElementById("select-example");
 const $output = document.getElementById("output");
+const $externalError = document.getElementById("external-error");
+const $externalErrorBox = document.getElementById("external-error-box");
+const $noticeDismiss = document.getElementById("notice-dismiss");
 const $outputError = document.getElementById("output-error");
 const $outputDebug = document.getElementById("output-debug");
 
@@ -27,19 +30,29 @@ const App = {
   selectionChange: false,
   tree: null,
   preludeLines: [],
+  preludeReady: false,
   preludeEnv: {},
   callStackSize: 0,
   fetchPrelude: () => {
-    // TODO: Error message on failure.
     fetch("prelude.cog")
-      .then((res) => res.text())
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error(`The server returned status ${res.status}${res.statusText ? ": " + res.statusText : ''}.`);
+        }
+        return res.text();
+      })
       .then((text) => {
         App.preludeLines = text.split('\n');
         execPrelude(text);
+      })
+      .catch((e) => {
+        $externalErrorBox.classList.remove("hidden");
+        $externalError.innerHTML = `<p>Unable to fetch prelude file! ${e.message}</p><p>You can continue to use the playground normally, but built-in functions defined in the prelude will not be available.</p>`;
+      }).finally(() => {
+        App.preludeReady = true;
         initIdent2kind(App.preludeEnv);
         redraw(Store.getInput());
-      })
-      .catch((e) => console.error(e));
+      });
   },
   ts: {
     parser: undefined,
@@ -342,7 +355,7 @@ function execPrelude(prelude) {
 }
 
 function redraw(code, edited) {
-  if (App.ts.parser == undefined || App.preludeLines.length == 0) {
+  if (App.ts.parser == undefined || !App.preludeReady) {
     return;
   }
 
@@ -1033,6 +1046,10 @@ $selectExample.addEventListener("change", function () {
   let newContent = key == "custom" ? Store.getInput() : ExamplePresets[key];
   App.selectionChange = true;
   CM.setText(newContent);
+});
+
+$noticeDismiss.addEventListener("click", function () {
+  $externalErrorBox.classList.add("hidden");
 });
 
 document.addEventListener("DOMContentLoaded", async function (_) {
