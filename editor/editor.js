@@ -145,11 +145,22 @@ export const CM = {
     return { row: line.number-1, column: index - line.from };
   },
   change2tsEdit: (previousState, newState, fromA, toA, fromB, toB, inserted) => {
+    // I have no idea what I'm doing. The following two lines attempts
+    // to fix the case where several parts of the document were changed
+    // in a single update, i.e. selecting some word and wrapping it with
+    // quotes/brackets on both sides simultaneously. It seems like this
+    // is the only case where fromA != fromB.
+    //
+    // The following line should be used hypothetically, but it
+    // simplifies to just `fromB`, so fromB will be used instead.
+    //
+    // fromA += fromB - fromA;
+    toA += fromB - fromA;
     let edit = {
-      startIndex: fromA,
+      startIndex: fromB,
       oldEndIndex: toA,
       newEndIndex: toB,
-      startPosition: CM.index2position(previousState.doc, fromA),
+      startPosition: CM.index2position(previousState.doc, fromB),
       oldEndPosition: CM.index2position(previousState.doc, toA),
       newEndPosition: CM.index2position(newState.doc, toB),
     };

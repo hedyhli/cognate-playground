@@ -67,4 +67,4 @@ Others
 - [X] Fix (1); highlight with static analysis rather than at runtime
 - [ ] [perf] Find ways to accurate cache for (1)
 - [X] Handle failure to fetch prelude
-- [ ] Fix tree-sitter edit conversions for pair wrapping (editor feature)
+- [X] Fix tree-sitter edit conversions for pair wrapping (editor feature)
