@@ -5,7 +5,7 @@
 import './simple.min.css';
 
 import { CM, Linter } from './editor/editor.js';
-import { ident2kind, Builtins, initIdent2kind, normalizeIdentifier, value2object } from './builtins.js';
+import { Runner, setPreludeReady, initPrelude, initTS, escape } from './cognate.js';
 
 const $selectExample = document.getElementById("select-example");
 const $output = document.getElementById("output");
@@ -15,7 +15,6 @@ const $noticeDismiss = document.getElementById("notice-dismiss");
 const $outputError = document.getElementById("output-error");
 const $outputDebug = document.getElementById("output-debug");
 
-const CALLSTACK_LIMIT = 3000;
 const STORAGE_KEY = "cognate-playground";
 
 const Store = {
@@ -28,11 +27,8 @@ const Store = {
 const App = {
   // The select preset
   selectionChange: false,
-  tree: null,
   preludeLines: [],
-  preludeReady: false,
-  preludeEnv: {},
-  callStackSize: 0,
+  runner: null,
   fetchPrelude: () => {
     fetch("prelude.cog")
       .then((res) => {
@@ -43,29 +39,18 @@ const App = {
       })
       .then((text) => {
         App.preludeLines = text.split('\n');
-        execPrelude(text);
+        initPrelude(text);
       })
       .catch((e) => {
         $externalErrorBox.classList.remove("hidden");
         $externalError.innerHTML = `<p>Unable to fetch prelude file! ${e.message}</p><p>You can continue to use the playground normally, but built-in functions defined in the prelude will not be available.</p>`;
       }).finally(() => {
-        App.preludeReady = true;
-        initIdent2kind(App.preludeEnv);
-        redraw(Store.getInput());
+        setPreludeReady();
+        App.runner.run(Store.getInput());
       });
   },
-  ts: {
-    parser: undefined,
-    init: async () => {
-      await TreeSitter.init()
-      const parser = new TreeSitter();
-      const Cognate = await TreeSitter.Language.load("tree-sitter-cognate.wasm");
-      parser.setLanguage(Cognate);
-      App.ts.parser = parser;
-    },
-  },
   init: async () => {
-    await App.ts.init();
+    await initTS();
     CM.setup(
       Store.getInput(),
       document.getElementById("input"),
@@ -83,11 +68,11 @@ const App = {
 
           if (shouldRedraw) {
             changes.forEach((info) => {
-              App.tree.edit(CM.change2tsEdit(update.startState, update.state, ...info));
+              App.runner.tree.edit(CM.change2tsEdit(update.startState, update.state, ...info));
             });
             // TODO: Do it in a worker thread or some other asynchronous way to
             // prevent blocking view updates.
-            redraw(update.state.doc.toString(), !App.selectionChange);
+            App.runner.run(update.state.doc.toString(), !App.selectionChange);
             App.selectionChange = false;
           }
         }
@@ -110,14 +95,14 @@ const Output = {
 
 let Errors = [];
 
-function appendError(message) {
-  Errors.push(message);
-}
-
-function redrawErrors() {
+function redrawErrors(heading) {
   let html = textLight("None!");
   if (Errors.length != 0) {
-    html = "<ol>";
+    html = '';
+    if (heading) {
+      html += "<p>heading</p>";
+    }
+    html += "<ol>";
     html += Errors.map((item) => `<li>${item}</li>`).join("");
     html += "</ol>";
   }
@@ -250,793 +235,12 @@ Print List ("1 2 \\t 3 \\n 4");
 `,
 };
 
-// Taken from lodash
-function escape(string) {
-  const htmlEscapes = {
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      '"': '&quot;',
-      "'": '&#39;',
-  };
-  const reUnescapedHtml = /[&<>"']/g;
-  const reHasUnescapedHtml = RegExp(reUnescapedHtml.source);
-
-  return string && reHasUnescapedHtml.test(string)
-        ? string.replace(reUnescapedHtml, (chr) => htmlEscapes[chr])
-        : string || '';
-}
-
-const Style = {
-  marked: 'color: var(--marked)',
-  light: 'color: var(--text-light)',
-};
-
 function textLight(text) {
   return `<span style='color: var(--text-light)'>${text}</span>`;
 }
 
 function textMarked(text) {
   return `<span style='color: var(--marked)'>${text}</span>`;
-}
-
-const stringEscapes = {b: '\b', t: '\t', n: '\n', v: '\v', f: '\f', r: '\r', '"': '"', '\\': '\\'};
-const stringEscapesReverse = {'\b': '\\b', '\t': '\\t', '\n': '\\n', '\v': '\\v', '\f': '\\f', '\r': '\\r', '"': '\\"', '\\': '\\\\'};
-
-const node2object = {
-  number: (node, userCode) => ({
-    type: 'number',
-    value: Number.parseFloat(node.text),
-    node: node,
-    userCode: userCode,
-  }),
-  string: (node, s, userCode) => ({
-    type: 'string',
-    value: s.slice(1, s.length-1),
-    node: node,
-    userCode: userCode,
-  }),
-  boolean: (node, userCode) => ({
-    type: 'boolean',
-    value: (node.text.toLowerCase() == 'true'),
-    node: node,
-    userCode: userCode,
-  }),
-  identifier: (node, userCode) => ({
-    type: 'identifier',
-    value: normalizeIdentifier(node.text),
-    node: node,
-    userCode: userCode,
-  }),
-  symbol: (node, userCode) => ({
-    type: 'symbol',
-    value: node.text.slice(1).toLowerCase(),
-    node: node,
-    userCode: userCode,
-  }),
-  block: (body, userCode, parent) => ({
-    type: 'block',
-    body: body, // list of objects
-    // This env is a 'spec' of how the env should be initialized when
-    // the block is executed (again). **IT SHOULD NOT BE MUTATED DIRECTLY**.
-    //
-    // Parent of the outmost block of the user's code is the preludeEnv.
-    // The parent of that, in turn, in undefined.
-    env: { parent: parent ? parent.env : undefined },
-    userCode: userCode,
-  }),
-};
-
-function execPrelude(prelude) {
-  if (App.ts.parser == undefined || App.preludeLines.length == 0) {
-    return;
-  }
-
-  // Parse
-  const preludeTree = App.ts.parser.parse(prelude);
-  Errors = [];
-
-  let result = parse(preludeTree);
-  if (result.bail || Errors.length > 0) {
-    redrawErrors();
-    $outputError.innerHTML = "<p>Error when parsing the prelude!</p>" + $outputError.innerHTML;
-    return;
-  }
-  // Exec
-  result = process(result.rootBlock, []);
-  if (result.error != '') {
-    appendError(result.error);
-    redrawErrors();
-    $outputDebug.innerHTML = reprArr(result.stack);
-    $outputError.innerHTML = "<p>Parsing of prelude failed!</p>" + $outputError.innerHTML;
-    return;
-  }
-  App.preludeEnv = result.env;
-}
-
-function redraw(code, edited) {
-  if (App.ts.parser == undefined || !App.preludeReady) {
-    return;
-  }
-
-  console.log("------");
-  Errors = [];
-  Linter.diagnostics = [];
-  Output.clear();
-
-  // Parse
-  App.tree = App.ts.parser.parse(code, App.tree);
-  let result = parse(App.tree, App.preludeEnv, true);
-  analyzeBlock(result.rootBlock);
-  CM.applyMarks(true);
-  redrawErrors();
-
-  if (result.bail || Errors.length != 0) {
-    $outputError.innerHTML = "<p>Error during parsing!</p>" + $outputError.innerHTML;
-
-  } else {
-    // Exec
-    App.callStackSize = 0;
-    result = process(result.rootBlock, []);
-    $outputDebug.innerHTML = reprArr(result.stack);
-    redrawErrors();
-
-    if (result.error != '') {
-      appendError(result.error);
-      redrawErrors();
-      $outputError.innerHTML = "<p>Runtime error!</p>" + $outputError.innerHTML;
-    }
-  }
-
-  // Save input after process finishes to prevent inability to exit potential
-  // loop where program cannot terminate without editing source code.
-  if (edited)
-    Store.saveInput(code);
-}
-
-// Represent a stack in a single line as a string.
-function reprArr(arr) {
-  let output = "";
-
-  const iter = item => {
-    if (item.type == 'block') {
-      output += "[";
-      if (item.body.length > 0) {
-        item.body.forEach(iter);
-        output = output.slice(0, output.length-2);
-      }
-      output += "], ";
-    } else {
-      output += `${repr(item)}, `;
-    }
-  };
-  arr.forEach(iter);
-
-  return `[${output.slice(0, output.length-2)}]`;
-}
-
-// Object to string for displaying the stack & debugging
-function repr(item) {
-  switch (item.type) {
-    case 'identifier':
-      return escape(item.value);
-    case 'number':
-      return item.value;
-    case 'boolean':
-      return textMarked(item.value ? 'True' : 'False');
-    case 'string':
-      return `"${escape(item.value)}"`;
-    case 'symbol':
-      return `\\${escape(item.value)}`;
-    case 'list':
-      return "(" + [...item.list].reverse().map(repr).join(", ") + ")"
-    case 'box':
-      return "<" + repr(item.value[0]) + ">";
-    default:
-      return textLight(`(unknown item of type ${textMarked(escape(item.type))})`);
-  }
-}
-
-function reprString(str) {
-  let chars = str.split('');
-  let quoted = chars.map((char) => stringEscapesReverse[char] || char).join('');
-  return '"' + quoted + '"';
-}
-
-// Object to string for the output
-function resolve(item, quotedString) {
-  if (item == undefined) {
-    return undefined;
-  }
-
-  switch (item.type) {
-    case 'block':
-      return value2object.string('(block)', Style.marked);
-    case 'string': {
-      if (item.style) // This string is already styled by Show/resolve()
-        return item;
-      if (quotedString) {
-        // convert back string escapes
-        return value2object.string(reprString(item.value));
-      }
-      // Otherwise, fall through
-    }
-    case 'number':
-      return value2object.string(item.value.toString());
-    case 'symbol':
-      return value2object.string(item.value);
-    case 'boolean':
-      return value2object.string(item.value ? 'True' : 'False', Style.marked);
-    case 'box': {
-      let s = resolve(item.value[0], quotedString);
-      s.value = `<${s.value}>`;
-      return s;
-    }
-    case 'list':
-      /// XXX: Does not support unknown item type within the map call.
-      return value2object.string(`(${[...item.list].reverse().map(item => resolve(item, true).value).join(', ')})`);
-      // TODO: This can't be used with `Show` because it should
-      // return a single string object and it can't currently supported
-      // styling of different segments.
-      //
-      // let output = [value2object.string("(")];
-      // [...item.list].reverse().forEach((item) => {
-      //   output.push(resolve(item));
-      //   output.push(value2object.string(", "));
-      // })
-      // output.pop();
-      // output.push(value2object.string(")"));
-      // return output;
-    default:
-      return {
-        error: `unknown item of type ${textMarked(escape(item.type))}, value ${textMarked(escape(item))}`
-      };
-  }
-}
-
-// Parse a syntax tree into a nested block to be processed, flattening
-// statement items in reverse order as per how Cognate operates the stack
-// within statements.
-//
-// The entire program has a root "block" representing the outer scope.
-function parse(tree, rootEnv, userCode) {
-  const root = tree.rootNode;
-  let bail = false;
-
-  let rootBlock = node2object.block([], userCode);
-  rootBlock.env.parent = rootEnv;
-
-  function inner(node, currentBlock) {
-    let inStmt = false;
-    let inBlock = false;
-
-    let name;
-    if (node.isMissing) {
-      name = `MISSING ${node.type}`;
-      appendError(`missing: ${textMarked(node.type)} ` + textLight(`(${node.startPosition.row}, ${node.startPosition.column})`));
-      bail = true;
-      return;
-    } else if (node.isNamed) {
-      name = node.type;
-    } else {
-      return;
-    }
-
-    if (name.endsWith("_comment")) {
-      return;
-    }
-
-    if (name == "ERROR") {
-      if (node.text != '') {
-        appendError(
-          `unexpected token: '${textMarked(node.text)}' ` + textLight(`(${node.startPosition.row}, ${node.startPosition.column})`)
-        );
-        Linter.addDiagnostic(node, "error", "unexpected token");
-      }
-      else {
-        appendError("syntax error " + textLight(`(${node.startPosition.row}, ${node.startPosition.column})`));
-        Linter.addDiagnostic(node, "error", "syntax error");
-      }
-      bail = true;
-      return;
-    }
-
-    switch (name) {
-      case "block":
-        inBlock = true;
-        currentBlock.body.push(node2object.block([], userCode, currentBlock));
-        break;
-      case "statement":
-        inStmt = true;
-        currentBlock.body.push(node2object.block([], userCode));
-        currentBlock.body[currentBlock.body.length-1].env = currentBlock.env;
-        break;
-      case "identifier":
-        if (userCode) {
-          if (ident2kind[node.text]) {
-            CM.addMark(node, ident2kind[node.text]);
-          }
-        }
-      case "number":
-      case "boolean":
-      case "symbol":
-        currentBlock.body.push(node2object[name](node, userCode));
-        break;
-      case "string": {
-        let str = node.text;
-        let finalStr = '';
-        if (node.children.length != 0) {
-          let start = 0;
-          for (let child of node.children) {
-            // XXX: nodes of other types ignored?
-            if (child.type == 'escape_sequence') {
-              let esc = child.text.substr(1);
-              if (stringEscapes[esc] == undefined) {
-                // This implementation of cognate will not be able to support all
-                // escape sequences cognac does, such as the terminal bell.
-                continue;
-              }
-              let startIndex = child.startPosition.column - node.startPosition.column;
-              finalStr += str.substr(start, startIndex - start);
-              finalStr += stringEscapes[esc];
-              start = startIndex + 2;
-            }
-          }
-          finalStr += str.substr(start);
-        } else {
-          finalStr = str;
-        }
-        currentBlock.body.push(node2object.string(node, finalStr, userCode));
-        break;
-      }
-      case "source_file":
-        break;
-      default:
-        if (!name.startsWith("MISSING")) {
-          appendError(`INTERNAL ERROR: unknown token type ${textMarked(name)} from tree-sitter!`);
-          bail = true;
-          return;
-        }
-    }
-
-    if (inStmt) {
-      let pushto = currentBlock.body[currentBlock.body.length-1];
-      node.children.forEach(child => inner(child, pushto));
-
-      let stmt = currentBlock.body.pop();
-
-      for(let i = stmt.body.length-1; i>=0; i--) {
-        let item = stmt.body[i];
-        let previous = stmt.body[i+1];
-        if (item.type == 'identifier') {
-          if (['Def', 'Let'].includes(item.value)) {
-            if (!(previous && previous.type == 'identifier')) {
-              appendError(`syntax error: identifier expected after ${item.value}`);
-              Linter.addDiagnostic(item.node, "error", `syntax error: identifier expected after ${item.value}`);
-              bail = true;
-              return;
-            } else {
-              if (currentBlock.env[previous.value]) {
-                appendError(`${item.value} ${textMarked(previous.value)}: cannot shadow in the same block`);;
-                Linter.addDiagnostic(previous.node, "error", "cannot shadow in the same block");
-                bail = true;
-              } else {
-                currentBlock.env[previous.value] = { type: '_predeclared', kind: item.value };
-              }
-            }
-          }
-        } else if (item.type == 'block') {
-          item.env.parent = currentBlock.env;
-        }
-        currentBlock.body.push(item);
-        previous = item;
-      }
-
-    } else if (inBlock) {
-      let pushto = currentBlock.body[currentBlock.body.length-1];
-      node.children.forEach(child => inner(child, pushto));
-
-    } else if (node.type == 'source_file') {
-      node.children.forEach(child => inner(child, currentBlock));
-
-    } else {
-      // XXX: nodes of other types ignored?
-    }
-  }
-
-  inner(root, rootBlock);
-  return { rootBlock: rootBlock, bail: bail }
-}
-
-function analyzeBlock(currentBlock) {
-  let bail = false;
-  for (let item of currentBlock.body) {
-    if (bail) {
-      return;
-    }
-    if (item.type == 'identifier' && ident2kind[item.value] == undefined) {
-      let foundDecl = false;
-      let e = currentBlock.env;
-      while (e) {
-        // TODO
-        // PERF: find ways to cache
-        if (e[item.value]) {
-          switch (e[item.value].kind) {
-            case 'Let':
-              foundDecl = true;
-              break;
-            case 'Def':
-              foundDecl = true;
-              CM.addMark(item.node, "function");
-              break;
-          }
-          break;
-        }
-        e = e.parent;
-      }
-      if (!foundDecl) {
-        appendError(`undefined symbol ${textMarked(escape(item.value))}`);
-        Linter.addDiagnostic(item.node, "error", "undefined symbol");
-      }
-    } else if (item.type == 'block') {
-      analyzeBlock(item);
-    }
-  }
-}
-
-
-// Execute a block within a possibly `scoped` environment, with an initial
-// stack `op`.
-function process(/*readonly*/ currentBlock, op) {
-  let env = {...currentBlock.env, parent: currentBlock.env.parent};
-  let error = "";
-
-  App.callStackSize += 1;
-  if (App.callStackSize == CALLSTACK_LIMIT) {
-    error = "call stack overflowed!";
-  }
-
-  function getVar(item) {
-    if (item.type == 'identifier') {
-      let e = env;
-      while (e) {
-        let value = e[item.value];
-
-        if (value != undefined) {
-          if (value.type == '_predeclared') {
-            error = `${textMarked(item.value)} used before declaration`;
-            Linter.addDiagnostic(item.node, "error", "variable used before declaration");
-            return undefined;
-          }
-          return value;
-        }
-        e = e.parent;
-      }
-      // Should not happen, since these are already checked in analyzeBlock
-      // error = `undefined symbol ${textMarked(escape(item.value))}`;
-      // Linter.addDiagnostic(item.node, "error", "undefined symbol");
-      // return undefined;
-      return undefined;
-    } else {
-      return item;
-    }
-  }
-
-  function exists(item, kind) {
-    if (item == undefined) {
-      error = `expected ${kind}`;
-      return undefined;
-    }
-    return item;
-  }
-
-  function expect(item, type) {
-    if (item == undefined) {
-      return undefined;
-    }
-    if (type == 'any' || item.type == type) {
-      return item;
-    }
-    error = `expected ${type}, got ${item.type}`;
-    return undefined;
-  }
-
-  function handleBuiltin(fnName) {
-    const {params, returns, fn} = Builtins[fnName];
-    let args = [];
-    for(let i = 0; i < params.length; i++) {
-      let param = params[i];
-      let arg = expect(exists(op.pop(), param.name), param.type);
-      if (arg == undefined) {
-        return undefined;
-      }
-      args.push(arg);
-    }
-    let ret = fn(...args);
-    // NOTE: fn must not return undefined.
-    // Either return
-    // - a JS object with error field, or
-    // - a value suitable for value2object[returns field]
-    if (ret.error != undefined) {
-      error = `in ${textMarked(fnName)}: ` + ret.error;
-      return undefined;
-    }
-    if (returns !== null) {
-      op.push(ret.type == returns ? ret : value2object[returns](ret));
-    }
-  }
-
-  // Execute the block
-  for (let s = 0; s < currentBlock.body.length; s++) {
-    let item = currentBlock.body[s];
-    let next = currentBlock.body[s+1];
-
-    if (error != "") {
-      break;
-    }
-
-    switch (item.type) {
-      case 'block': {
-        // XXX: Fix for:
-        // Def M (
-        //   Def P;
-        //   Let N;
-        //   Print N;
-        //   P;
-        //   Do If == N 0
-        //     then ()
-        //     else (M (P) - 1 N);
-        // );
-        // M (Print "in P") 3;
-        op.push({
-          type: 'block',
-          body: item.body,
-          env: { ...item.env, parent: env },
-        });
-        break;
-      }
-      case 'identifier':
-        if (next != undefined && next.type == 'identifier') {
-          if (['Def', 'Let'].includes(next.value)) {
-            op.push(item);
-            continue;
-          }
-        }
-        {
-          let fn = getVar(item);
-          if (fn && fn.type == 'function') {
-            let call_result = process(fn.block, op);
-            if (call_result.error != "") {
-              error = `in ${textMarked(item.value)}: ${call_result.error}`;
-              break;
-            }
-            op = call_result.stack;
-            continue;
-          }
-        }
-        switch (item.value) {
-          // Binding
-          case 'Def': {
-            // This check is technically done already during parsing.
-            let a = expect(exists(op.pop(), 'identifier'), 'identifier');
-            if (a == undefined) {
-              error = `in ${textMarked('Def')}: ${error}`;
-              break;
-            }
-            let b = expect(exists(op.pop(), `function body`), 'block');
-            if (b == undefined) {
-              error = `in ${textMarked('Def')}: ${error}`;
-              break;
-            }
-            env[a.value] = { type: 'function', block: b };
-            break;
-          }
-          case 'Let': {
-            let a = expect(exists(op.pop(), 'identifier'), 'identifier');
-            if (a == undefined) {
-              error = `in ${textMarked('Let')}: ${error}`;
-              break;
-            }
-            let b = op.pop();
-            if (b == undefined) {
-              error = `in ${textMarked('Let')}: expected value to set`;
-              break;
-            }
-            env[a.value] = {...b};
-            break;
-          }
-          case 'Set': {
-            let a = expect(exists(op.pop(), 'box'), 'box');
-            if (a == undefined) {
-              error = `in ${textMarked('Set')}: ${error}`;
-              break;
-            }
-            let b = op.pop();
-            if (b == undefined) {
-              error = `in ${textMarked('Set')}: expected value to set`;
-              break;
-            }
-            a.value[0] = b;
-            break;
-          }
-
-          // Special types
-          case 'List': {
-            let block = expect(exists(op.pop(), 'block'), 'block');
-            if (block == undefined) {
-              error = `in ${textMarked('List')}: ${error}`;
-              break;
-            }
-
-            let list = [];
-            let result = process(block, list);
-            if (result.error != "") {
-              error = `in ${textMarked('List')}: ${result.error}`;
-              break;
-            }
-            op.push(value2object.list(list));
-            break;
-          }
-          case 'Box': {
-            let value = exists(op.pop(), 'value');
-            if (value == undefined) {
-              error = `in ${textMarked('Box')}: ${error}`;
-              break;
-            }
-            op.push(value2object.box(value));
-            break;
-          }
-          case 'Unbox': {
-            let box = expect(exists(op.pop(), 'box'), 'box');
-            if (box == undefined) {
-              error = `in ${textMarked('Unbox')}: ${error}`;
-              break;
-            }
-            op.push(box.value[0]);
-            break;
-          }
-          case 'Regex': {
-            let s = expect(exists(op.pop(), 'regex string'), 'string');
-            if (s.value.length == 0) {
-              /// Not supported by CognaC
-              error = `in ${textMarked('Regex')}: empty regex is invalid`;
-              break;
-            }
-            let regex;
-            try {
-              regex = new RegExp(s.value);
-            } catch (err) {
-              error = `in ${textMarked('Regex')}: regex compile error: ${err}`;
-              break;
-            }
-            op.push({
-              type: 'block',
-              body: [{type: 'identifier', value: '_applyRegex'}],
-              env: {regex},
-            });
-            break;
-          }
-          case '_applyRegex': {
-            let regex = env.regex;
-            if (regex == undefined) {
-              error = "internal error when applying regex!";
-              break;
-            }
-            let s = expect(exists(op.pop(), 'string'), 'string');
-            if (s == undefined) {
-              error = `in applying regex: ${error}`;
-              break;
-            }
-            op.push(value2object.boolean(regex.test(s.value)));
-            break;
-          }
-
-          // Special
-          case 'Stack': {
-            let list = [...op];
-            op.push(value2object.list(list));
-            break;
-          }
-          case 'Clear': {
-            while (op.length > 0) {
-              op.pop();
-            }
-            break;
-          }
-          case 'Error': {
-            let msg = expect(exists(op.pop(), 'error message'), 'string');
-            if (msg == undefined) {
-              // How ironic
-              error = `in ${textMarked('Error')}: ${error}`;
-            } else {
-              error = msg.value;
-            }
-            break;
-          }
-
-          // I/O
-          case 'Show': {
-            let item = exists(op.pop(), 'value');
-            let str = resolve(item, false);
-            if (str != undefined) {
-              op.push(str);
-            }
-            break;
-          }
-          case 'Print': {
-            let item = exists(op.pop(), 'value');
-            let str = resolve(item, false);
-            if (str != undefined) {
-              Output.add(str);
-              Output.newline();
-            } else {
-              error = `in ${textMarked('Print')}: ${error}`
-            }
-            break;
-          }
-          case 'Put': {
-            let item = exists(op.pop(), 'value');
-            let str = resolve(item, false);
-            if (str != undefined) {
-              Output.add(str);
-            } else {
-              error = `in ${textMarked('Print')}: ${error}`
-            }
-            break;
-          }
-
-          // Types
-          case 'Number?':
-          case 'String?':
-          case 'Symbol?':
-          case 'Block?':
-          case 'List?':
-          case 'Boolean?': {
-            let a = exists(op.pop(), 'value');
-            let type = item.value.slice(0, item.value.length-1).toLowerCase();
-            if (a != undefined)
-              op.push(value2object.boolean(a.type == type));
-            else
-              error = `in ${textMarked(item.value)}: ${error}`;
-            break;
-          }
-          case 'Number!':
-          case 'Symbol!':
-          case 'String!':
-          case 'Block!':
-          case 'List!':
-          case 'Boolean!': {
-            let a = exists(op[op.length-1], 'value');
-            let type = item.value.slice(0, item.value.length-1).toLowerCase();
-            if (a != undefined && a.type != type)
-              error = `in ${textMarked(item.value)}: ${type} assertion failed`
-            break;
-          }
-
-          default: {
-            if (Builtins[item.value]) {
-              handleBuiltin(item.value);
-              break;
-            } else {
-              let a = getVar(item);
-              if (a != undefined) {
-                op.push(a);
-              } else {
-                // Should not happen, since undefined symbols are caught in `analyzeBlock`
-              }
-            }
-            break;
-          }
-        };
-        break;
-      default:
-        op.push(item);
-        break;
-    };
-  }
-
-  App.callStackSize -= 1;
-  return {stack: op, error: error, env: env};
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -1054,4 +258,34 @@ $noticeDismiss.addEventListener("click", function () {
 
 document.addEventListener("DOMContentLoaded", async function (_) {
   await App.init();
+  App.runner = new Runner({
+    output: Output,
+    errors: {
+      add(e) {
+        Errors.push(e);
+      },
+      clear() {
+        Errors = [];
+      },
+      redraw() {
+        redrawErrors();
+      },
+      hasAny: () => Errors.length > 0,
+    },
+    diagnostics: {
+      add(...args) {
+        Linter.addDiagnostic(...args);
+      },
+      clear() {
+        Linter.diagnostics = [];
+      },
+    },
+    style: {
+      marked: (s) => textMarked(s),
+      light: (s) => textLight(s),
+    },
+    editor: CM,
+    store: Store,
+    $stack: $outputDebug,
+  });
 });
