@@ -1,0 +1,39 @@
+name: Checks
+on:
+  push: {}
+  pull_request:
+    branches:
+      - main
+jobs:
+  main:
+    name: checks
+
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [debian-latest]
+        node-version: [22]
+
+    steps:
+      - name: git checkout
+        uses: actions/checkout@v4
+
+      - name: install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: setup node.js
+        uses: actions/setup-node@v4.0.0
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'pnpm'
+
+      - name: install dependencies
+        run: pnpm install
+
+      - name: build
+        run: pnpm build
+
+      - name: test
+        run: pnpm test
