@@ -1,5 +1,7 @@
 # Cognate Playground
 
+[![Checks](https://github.com/hedyhli/cognate-playground/actions/workflows/checks.yml/badge.svg)](https://github.com/hedyhli/cognate-playground/actions/workflows/checks.yml)
+
 Canonical instance: <https://cognate-playground.hedy.dev/>
 
 An interactive playground for [Cognate](https://cognate-lang.github.io) that
