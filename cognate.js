@@ -231,7 +231,7 @@ export class Runner {
       case 'symbol':
         return `\\${escape(item.value)}`;
       case 'list':
-        return "(" + [...item.list].reverse().map(this.repr).join(", ") + ")"
+        return "(" + [...item.list].reverse().map(this.repr, this).join(", ") + ")"
       case 'box':
         return "<" + this.repr(item.value[0]) + ">";
       default:
