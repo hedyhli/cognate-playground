@@ -157,7 +157,9 @@ Print Primes up to 100;`,
 
 Put "The 20th fibonacci number is: ";
 Print Fib 20;`,
-  numbers: `~~ Numbers
+  numbers: `~~ Numbers are what you expect. Both integers
+~~ and floats are supported.
+
 Print 0;
 Print 0.2;
 Put "1 + 2 = ";
@@ -207,6 +209,10 @@ Print Character Ordinal "A";
 ~~
 ~~ Note that '\\a' that is supported by CognaC,
 ~~ is not supported here in the playground.
+
+Print "\\nConverting between cases:";
+Print Uppercase "ÀḅḈɗe";
+Print Lowercase "ÀḅḈƊE";
 `,
   blocks: `~~ Blocks are denoted with (). They will not
 ~~ be evaluated until you call Do.
@@ -214,7 +220,10 @@ Print Character Ordinal "A";
 (Print "hi");
 Drop;
 
-Do (Print "hi 2");`,
+Do (Print "hi 2");
+
+They can also be bound to functions, calling them
+won't require 'Do'.`,
   functions: `~~ Define functions using Def.
 ~~ Def works similarly to Let, except they must be
 ~~ bound to a block.
@@ -229,6 +238,9 @@ Hello;`,
 ~~ the List function, which takes a block, evaluates
 ~~ it, then collects the remaining items in the stack
 ~~ into a list.
+
+Print List (1; 2; 3; 4; 5);
+Print List (1 2 3 4 5);
 
 Print "\\nShow strings literally when in a list:";
 Print List ("1 2 \\t 3 \\n 4");

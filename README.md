@@ -15,7 +15,8 @@ parser and the runtime is written entirely in JavaScript.
 
 Files of interest
 - index.html
-- main.js -- the runtime, and the rest of the app excluding the editor
+- cognate.js -- the interpreter and runtime
+- main.js -- the rest of the app excluding the editor
 - `editor/*` -- code relating to the editor component
 - `public/tree-sitter.{js,wasm}` -- from tree-sitter releases
 - `public/tree-sitter-cognate.wasm` -- built from

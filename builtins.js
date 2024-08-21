@@ -306,6 +306,16 @@ export const Builtins = {
       return s.value.split(sep.value).reverse().map(value2object.string);
     },
   },
+  Uppercase: {
+    params: [{name: 'string', type: 'string'}],
+    returns: 'string',
+    fn: s => s.value.toUpperCase(),
+  },
+  Lowercase: {
+    params: [{name: 'string', type: 'string'}],
+    returns: 'string',
+    fn: s => s.value.toLowerCase(),
+  },
 };
 
 export function initIdent2kind(preludeEnv) {
