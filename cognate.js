@@ -167,6 +167,7 @@ export class Runner {
     // f for 'frontend'
     this.callStackSize = 0;
     this.tree = undefined;
+    // Either you give it all or none at all.
     this.ui = f ? f : {
       errors: {
         add() {},
@@ -506,10 +507,8 @@ export class Runner {
           }
           e = e.parent;
         }
-        // Should not happen, since these are already checked in analyzeBlock
-        // error = `undefined symbol ${this.textMarked(escape(item.value))}`;
-        // Linter.addDiagnostic(item.node, "error", "undefined symbol");
-        // return undefined;
+        // Should not happen, since these are already checked in analyze(), and
+        // we are confident that the prelude is *correct*.
         return undefined;
       } else {
         return item;
@@ -535,7 +534,7 @@ export class Runner {
       return undefined;
     }
 
-    function handleBuiltin(fnName) {
+    const handleBuiltin = (fnName) => {
       const {params, returns, fn} = Builtins[fnName];
       let args = [];
       for(let i = 0; i < params.length; i++) {
