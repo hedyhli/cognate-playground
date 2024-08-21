@@ -8,7 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "lezer": "lezer-generator editor/cognate.grammar -o editor/parser.js",
-    "test": "mocha editor/test/test.js test.js"
+    "test": "sed -i '2s_// import Tr_import Tr_' cognate.js; mocha editor/test/test.js test.js; sed -i '2s_import Tr_// import Tr_' cognate.js"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",
