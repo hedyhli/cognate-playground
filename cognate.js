@@ -1,3 +1,5 @@
+// Uncomment for tests
+// import TreeSitter from 'web-tree-sitter';
 import { ident2kind, Builtins, initIdent2kind, normalizeIdentifier, value2object } from './builtins.js';
 
 const CALLSTACK_LIMIT = 3000;
@@ -162,41 +164,47 @@ function cognate2string(item, quotedString) {
   }
 }
 
+export const mockFrontend = {
+  errors: {
+    add() {},
+    redraw() {},
+    clear() {},
+    hasAny() { return false; },
+  },
+  diagnostics: {
+    add() {},
+    clear() {},
+  },
+  style: {
+    marked(s) { return s; },
+    light(s) { return s; },
+  },
+  editor: {
+      addMark() {},
+      applyMarks() {},
+    },
+  store: {
+      saveInput() {},
+    },
+  $stack: {},
+  output: {
+    add() {},
+    newline() {},
+    clear() {},
+  },
+};
+
 export class Runner {
   constructor(f) {
     // f for 'frontend'
     this.callStackSize = 0;
     this.tree = undefined;
     // Either you give it all or none at all.
-    this.ui = f ? f : {
-      errors: {
-        add() {},
-        redraw() {},
-        clear() {},
-        hasAny() { return false; },
-      },
-      diagnostics: {
-        add() {},
-        clear() {},
-      },
-      style: {
-        marked(s) { return s; },
-        light(s) { return s; },
-      },
-    };
-    this.editor = (f && f.editor) ? f.editor : {
-      addMarks() {},
-      applyMarks() {},
-    };
-    this.store = (f && f.store) ? f.store : {
-      saveInput() {},
-    };
+    this.ui = f ? f : mockFrontend;
+    this.editor = (f && f.editor) ? f.editor : mockFrontend.editor;
+    this.store = (f && f.store) ? f.store : mockFrontend.store;
     this.$stack = (f && f.$stack) ? f.$stack : {};
-    this.output = (f && f.output) ? f.output : {
-      add() {},
-      newline() {},
-      clear() {},
-    };
+    this.output = (f && f.output) ? f.output : mockFrontend.output;
   }
 
   appendError(err) { this.ui.errors.add(err); }
@@ -447,7 +455,6 @@ export class Runner {
       return;
     }
 
-    console.log("------");
     this.clearErrors();
     this.clearDiagnostics();
     this.clearOutput();
