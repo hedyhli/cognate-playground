@@ -2,6 +2,7 @@ default:
   @just -l
 
 deploy:
+  pnpm lezer
   pnpm build
   tar -C dist -cvz . > site.tgz
   hut pages publish --protocol HTTPS -d cognate-playground.hedy.dev site.tgz
