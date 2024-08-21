@@ -730,6 +730,47 @@ export class Runner {
               op.push(value2object.boolean(regex.test(s.value)));
               break;
             }
+            case 'Regex-match': {
+              let s = expect(exists(op.pop(), 'regex string'), 'string');
+              if (s.value.length == 0) {
+                /// Not supported by CognaC
+                error = `in ${this.textMarked('Regex-match')}: empty regex is invalid`;
+                break;
+              }
+              let regex;
+              try {
+                regex = new RegExp(s.value);
+              } catch (err) {
+                error = `in ${this.textMarked('Regex-match')}: regex compile error: ${err}`;
+                break;
+              }
+              op.push({
+                type: 'block',
+                body: [{type: 'identifier', value: '_matchRegex'}],
+                env: {regex},
+              });
+              break;
+            }
+            case '_matchRegex': {
+              let regex = env.regex;
+              if (regex == undefined) {
+                error = "internal error when matching regex!";
+                break;
+              }
+              let s = expect(exists(op.pop(), 'string'), 'string');
+              if (s == undefined) {
+                error = `in matching regex: ${error}`;
+                break;
+              }
+              let result = regex.exec(s.value);
+              if (result) {
+                for (let capture of [...result].splice(1).reverse()) {
+                  op.push(value2object.string(capture));
+                }
+              }
+              op.push(value2object.boolean(result != null));
+              break;
+            }
 
             // Special
             case 'Stack': {

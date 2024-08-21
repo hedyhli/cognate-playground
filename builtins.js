@@ -333,6 +333,7 @@ export function initIdent2kind(preludeEnv) {
     "Box",
     "Unbox",
     "Regex",
+    "Regex-match",
     "Stack",
     "Clear",
     "Error",
