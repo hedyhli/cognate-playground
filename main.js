@@ -51,6 +51,36 @@ const App = {
   },
   init: async () => {
     await initTS();
+    App.runner = new Runner({
+      output: Output,
+      errors: {
+        add(e) {
+          Errors.push(e);
+        },
+        clear() {
+          Errors = [];
+        },
+        redraw() {
+          redrawErrors();
+        },
+        hasAny: () => Errors.length > 0,
+      },
+      diagnostics: {
+        add(...args) {
+          Linter.addDiagnostic(...args);
+        },
+        clear() {
+          Linter.diagnostics = [];
+        },
+      },
+      style: {
+        marked: (s) => textMarked(s),
+        light: (s) => textLight(s),
+      },
+      editor: CM,
+      store: Store,
+      $stack: $outputDebug,
+    });
     CM.setup(
       Store.getInput(),
       document.getElementById("input"),
@@ -268,36 +298,4 @@ $noticeDismiss.addEventListener("click", function () {
   $externalErrorBox.classList.add("hidden");
 });
 
-document.addEventListener("DOMContentLoaded", async function (_) {
-  await App.init();
-  App.runner = new Runner({
-    output: Output,
-    errors: {
-      add(e) {
-        Errors.push(e);
-      },
-      clear() {
-        Errors = [];
-      },
-      redraw() {
-        redrawErrors();
-      },
-      hasAny: () => Errors.length > 0,
-    },
-    diagnostics: {
-      add(...args) {
-        Linter.addDiagnostic(...args);
-      },
-      clear() {
-        Linter.diagnostics = [];
-      },
-    },
-    style: {
-      marked: (s) => textMarked(s),
-      light: (s) => textLight(s),
-    },
-    editor: CM,
-    store: Store,
-    $stack: $outputDebug,
-  });
-});
+App.init().then(() => {}).catch(err => { console.error(err) });
