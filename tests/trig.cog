@@ -1,34 +1,34 @@
-Print "XFAIL: Trig functions";
-~~ Print If == 1 Sind 90
-~~       "PASS: Degree sin"
-~~ else
-~~       "FAIL: Degree sin";
-~~
-~~ Print If == 1 Cosd 360
-~~       "PASS: Degree cos"
-~~ else
-~~       "FAIL: Degree cos";
-~~
-~~ Print If == / Cosd 90 Sind 90 Tand 90
-~~       "PASS: Degree tan"
-~~ else
-~~       "FAIL: Degree tan";
-~~
-~~ Print If == 1 Sin / 2 3.14159265358979323846
-~~       "PASS: Radian sin"
-~~ else
-~~       "FAIL: Radian sin";
-~~
-~~ Print If == 1 Cos 0
-~~       "PASS: Radian cos"
-~~ else
-~~       "FAIL: Radian cos";
-~~
-~~ Print If == / Cos 90 Sin 90 Tan 90
-~~       "PASS: Radian tan"
-~~ else
-~~       "FAIL: Radian tan";
-~~
+Print If == 1 Sind 90
+      "PASS: Degree sin"
+else
+      "FAIL: Degree sin";
+
+Print If == 1 Cosd 360
+      "PASS: Degree cos"
+else
+      "FAIL: Degree cos";
+
+Print If == / Cosd 90 Sind 90 Tand 90
+      "PASS: Degree tan"
+else
+      "FAIL: Degree tan";
+
+Print If == 1 Sin / 2 3.14159265358979323846
+      "PASS: Radian sin"
+else
+      "FAIL: Radian sin";
+
+Print If == 1 Cos 0
+      "PASS: Radian cos"
+else
+      "FAIL: Radian cos";
+
+Print If == / Cos 90 Sin 90 Tan 90
+      "PASS: Radian tan"
+else
+      "FAIL: Radian tan";
+
+Print "XFAIL: Inverse trig functions";
 ~~ Print If == 30 Asind 0.5
 ~~       "PASS: Degree arcsin"
 ~~ else

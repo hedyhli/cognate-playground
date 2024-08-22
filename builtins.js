@@ -21,6 +21,9 @@ export const value2object = {
   any: anything => anything,
 };
 
+function _deg2rad(deg) { return deg * Math.PI / 180; }
+function _red2deg(rad) { return rad * 180 / Math.PI; }
+
 function _compare(x, y) {
   if (x.type != y.type)
   return false;
@@ -36,9 +39,19 @@ function _compare(x, y) {
       return false;
     case 'box':
       return _compare(x.value[0], y.value[0]);
+    case 'number':
+      return Math.abs(x.value - y.value) <= 0.5e-14 * Math.abs(x.value);
     default:
       return x.value === y.value;
   }
+}
+
+function singleNumberFn(fn, name) {
+  return {
+    params: [{name: name || 'operand', type: 'number'}],
+    returns: 'number',
+    fn: (a) => fn(a.value)
+  };
 }
 
 export const Builtins = {
@@ -111,26 +124,28 @@ export const Builtins = {
     returns: 'number',
     fn: (a, b) => a.value == 0 ? { error: "modulo by zero" } : b.value % a.value,
   },
-  Exp: {
-    params: [{name: 'operand', type: 'number'}],
+  Exp: singleNumberFn(Math.exp),
+  Sqrt: singleNumberFn(a => a < 0 ? { error: "sqrt of a negative number" } : Math.sqrt(a)),
+  Floor: singleNumberFn(Math.floor),
+  Ceiling: singleNumberFn(Math.ceil),
+  Round: singleNumberFn(Math.round),
+  Abs: singleNumberFn(Math.abs),
+  Ln: singleNumberFn(a => (a <= 0 ? {error: "math error: Ln of a non-positive number"} : Math.log(a))),
+  Log: {
+    params: [{name: 'base', type: 'number'}, {name: 'operand', type: 'number'}],
     returns: 'number',
-    fn: a => Math.exp(a.value),
+    fn: (base, a) => (base.value == 1 ? {error: "attempt to get log with base 1"} : a.value <= 0 ? {error: "math error: Log of non-positive number"} : Math.log(a.value) / Math.log(base.value)),
   },
-  Sqrt: {
-    params: [{name: 'operand', type: 'number'}],
-    returns: 'number',
-    fn: a => a.value < 0 ? { error: "sqrt of a negative number" } : Math.sqrt(a.value),
-  },
-  Floor: {
-    params: [{name: 'operand', type: 'number'}],
-    returns: 'number',
-    fn: a => Math.floor(a.value),
-  },
-  Ceiling: {
-    params: [{name: 'operand', type: 'number'}],
-    returns: 'number',
-    fn: a => Math.ceil(a.value),
-  },
+
+  Sin: singleNumberFn(Math.sin, 'operand in radians'),
+  Cos: singleNumberFn(Math.cos, 'operand in radians'),
+  // XXX: Inf
+  Tan: singleNumberFn(Math.tan, 'operand in degrees'),
+
+  Sind: singleNumberFn((a) => Math.sin(_deg2rad(a)), 'operand in radians'),
+  Cosd: singleNumberFn((a) => Math.cos(_deg2rad(a)), 'operand in radians'),
+  Tand: singleNumberFn((a) => Math.tan(_deg2rad(a)), 'operand in radians'),
+
   Random: {
     params: [{name: 'start', type: 'number'}, {name: 'end', type: 'number'}],
     returns: 'number',

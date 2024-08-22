@@ -33,19 +33,17 @@ Print If == 5 Ceiling 4.3
 else
 	"FAIL: Ceiling";
 
-Print "XFAIL: Round function";
-~~ Print If == 5 Round 4.7
-~~ 	"PASS: Round"
-~~ else
-~~ 	"FAIL: Round";
+Print If == 5 Round 4.7
+	"PASS: Round"
+else
+	"FAIL: Round";
 
-Print "XFAIL: Floating point precision";
-~~ Print If == 0.3 + 0.1 0.2
-~~ 	"PASS: Floating point error"
-~~ else
-~~ 	"FAIL: Floating point error";
-~~
-~~ Print If == 1 + 0.1 * 3 0.3
-~~ 	"PASS: Floating point error 2"
-~~ else
-~~ 	"FAIL: Floating point error 2";
+Print If == 0.3 + 0.1 0.2
+	"PASS: Floating point error"
+else
+	"FAIL: Floating point error";
+
+Print If == 1 + 0.1 * 3 0.3
+	"PASS: Floating point error 2"
+else
+	"FAIL: Floating point error 2";

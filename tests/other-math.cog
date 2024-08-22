@@ -3,13 +3,12 @@ Print If == 1 Exp 0
 else
       "FAIL: exp";
 
-Print "XFAIL: Ln, Log functions";
-~~ Print If == 0 Ln 1
-~~       "PASS: Log base e"
-~~ else
-~~       "FAIL: Log base e";
-~~
-~~ Print If == 2 Log 10 100
-~~       "PASS: Log"
-~~ else
-~~       "FAIL: Log";
+Print If == 0 Ln 1
+      "PASS: Log base e"
+else
+      "FAIL: Log base e";
+
+Print If == 2 Log 10 100
+      "PASS: Log"
+else
+      "FAIL: Log";
