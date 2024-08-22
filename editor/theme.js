@@ -7,7 +7,7 @@ export const c = {
   coral: "#e06c75",
   cyan: "#56b6c2",
   invalid: "#ffffff",
-  ivory: "#abb2bf",
+  ivory: "var(--preformatted)",
   stone: "#7d8799",
   malibu: "#61afef",
   sage: "#98c379",
@@ -15,10 +15,11 @@ export const c = {
   violet: "#c678dd",
   darkBackground: "#21252b",
   highlightBackground: "#2c313a",
-  background: "#282c34",
+  background: "var(--accent-bg)",
   tooltipBackground: "#353a42",
   selection: "#3E4451",
-  cursor: "#528bff"
+  cursor: "#528bff",
+  activeLineBackground: "#5064901a",
 };
 
 export const editorTheme = EditorView.theme({
@@ -60,11 +61,11 @@ export const editorTheme = EditorView.theme({
     backgroundColor: "#6199ff2f"
   },
 
-  ".cm-activeLine": {backgroundColor: "#6699ff0b"},
+  ".cm-activeLine": {backgroundColor: c.activeLineBackground},
   ".cm-selectionMatch": {backgroundColor: "#aafe661a"},
 
   "&.cm-focused .cm-matchingBracket, &.cm-focused .cm-nonmatchingBracket": {
-    backgroundColor: "#bad0f847"
+    backgroundColor: "#bad0f847",
   },
 
   ".cm-gutters": {
@@ -74,7 +75,7 @@ export const editorTheme = EditorView.theme({
   },
 
   ".cm-activeLineGutter": {
-    backgroundColor: c.highlightBackground
+    backgroundColor: c.activeLineBackground,
   },
 
   ".cm-foldPlaceholder": {
