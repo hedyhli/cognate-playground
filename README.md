@@ -52,7 +52,8 @@ Implementation
 - [ ] Consider feasibility of transpiling to JS or use bytecode
 - [ ] Standard library coverage
 - [X] Closures
-- [ ] Tests
+- [X] Tests
+- [ ] Consider using something like decimal.js for floating point precision
 
 Others
 - [X] Presets of example code
