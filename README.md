@@ -50,7 +50,7 @@ Implementation
 - [X] Prevent stack overflows
 - [ ] Optimizations on the stack before parsing
 - [ ] Consider feasibility of transpiling to JS or use bytecode
-- [ ] Standard library coverage
+- [X] Standard library coverage
 - [X] Closures
 - [X] Tests
 - [ ] Consider using something like decimal.js for floating point precision

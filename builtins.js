@@ -22,7 +22,7 @@ export const value2object = {
 };
 
 function _deg2rad(deg) { return deg * Math.PI / 180; }
-function _red2deg(rad) { return rad * 180 / Math.PI; }
+function _rad2deg(rad) { return rad * 180 / Math.PI; }
 
 function _compare(x, y) {
   if (x.type != y.type)
@@ -145,6 +145,27 @@ export const Builtins = {
   Sind: singleNumberFn((a) => Math.sin(_deg2rad(a)), 'operand in radians'),
   Cosd: singleNumberFn((a) => Math.cos(_deg2rad(a)), 'operand in radians'),
   Tand: singleNumberFn((a) => Math.tan(_deg2rad(a)), 'operand in radians'),
+
+  Asin: singleNumberFn(Math.asin),
+  Acos: singleNumberFn(Math.acos),
+  Atan: singleNumberFn(Math.atan),
+
+  Asin: singleNumberFn((a) => Math.abs(a) > 1 ? {error: "math domain error"} : Math.asin(a)),
+  Acos: singleNumberFn((a) => Math.abs(a) > 1 ? {error: "math domain error"} : Math.acos(a)),
+  Atan: singleNumberFn(Math.atan),
+
+  Asind: singleNumberFn((a) => Math.abs(a) > 1 ? {error: "math domain error"} : _rad2deg(Math.asin(a))),
+  Acosd: singleNumberFn((a) => Math.abs(a) > 1 ? {error: "math domain error"} : _rad2deg(Math.acos(a))),
+  Atand: singleNumberFn((a) => _rad2deg(Math.atan(a))),
+
+  // TODO: domains
+  Sinh: singleNumberFn((a) => Math.sinh(a), 'operand in radians'),
+  Cosh: singleNumberFn((a) => Math.cosh(a), 'operand in radians'),
+  Tanh: singleNumberFn((a) => Math.tanh(a), 'operand in radians'),
+
+  Sinhd: singleNumberFn((a) => Math.sinh(_deg2rad(a)), 'operand in radians'),
+  Coshd: singleNumberFn((a) => Math.cosh(_deg2rad(a)), 'operand in radians'),
+  Tanhd: singleNumberFn((a) => Math.tanh(_deg2rad(a)), 'operand in radians'),
 
   Random: {
     params: [{name: 'start', type: 'number'}, {name: 'end', type: 'number'}],
