@@ -60,8 +60,8 @@ const App = {
         clear() {
           Errors = [];
         },
-        redraw() {
-          redrawErrors();
+        redraw(heading) {
+          redrawErrors(heading);
         },
         hasAny: () => Errors.length > 0,
       },

@@ -186,6 +186,7 @@ export const mockFrontend = {
   store: {
       saveInput() {},
     },
+  // TODO: A more structured approach that's independent of the DOM entirely.
   $stack: {},
   output: {
     add() {},
@@ -210,7 +211,7 @@ export class Runner {
   appendError(err) { this.ui.errors.add(err); }
   redrawErrors(heading) { this.ui.errors.redraw(heading); }
   clearErrors() { this.ui.errors.clear(); }
-  hasErrors() { this.ui.errors.hasAny(); }
+  hasErrors() { return this.ui.errors.hasAny(); }
   clearOutput() { this.output.clear(); }
   textMarked(s) { return this.ui.style.marked(s); }
   textLight(s) { return this.ui.style.light(s); }
@@ -458,26 +459,28 @@ export class Runner {
     this.clearErrors();
     this.clearDiagnostics();
     this.clearOutput();
+    this.$stack.innerHTML = "";
 
     // Parse
     this.tree = G.ts.parser.parse(code, this.tree);
     let result = this.parse(this.tree, G.preludeEnv, true);
     this.analyze(result.rootBlock);
     this.editor.applyMarks(true);
-    this.redrawErrors();
 
     if (result.bail || this.hasErrors()) {
       this.redrawErrors("Error during parsing!");
     } else {
+      this.redrawErrors();
       // Exec
       this.callStackSize = 0;
       result = this.process(result.rootBlock, []);
       this.$stack.innerHTML = this.reprArr(result.stack);
-      this.redrawErrors();
 
       if (result.error != '') {
         this.appendError(result.error);
         this.redrawErrors("Runtime error!");
+      } else {
+        this.redrawErrors();
       }
     }
 
