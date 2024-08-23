@@ -69,6 +69,7 @@ Others
 - [X] Show parser errors inline in the editor
 - [ ] More informative runtime errors
 - [X] Fix (1); highlight with static analysis rather than at runtime
-- [ ] [perf] Find ways to accurate cache for (1)
+- [ ] [perf] Find ways to accurately cache for (1)
 - [X] Handle failure to fetch prelude
 - [X] Fix tree-sitter edit conversions for pair wrapping (editor feature)
+- [ ] Editor settings
