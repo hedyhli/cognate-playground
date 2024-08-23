@@ -5,28 +5,8 @@
   </head>
 
   <body>
-    <style>
-    :root {
-      --code: white;
-      --bg: #1c1c1c;
-      --accent-bg: #21242b;
-      --text: #dcdcdc;
-      --text-light: #ababab;
-      --accent: #ffb300;
-      --accent-hover: #ffe099;
-      --accent-text: var(--bg);
-      --preformatted: #c0c6d1;
-      --disabled: #111;
-      --standard-border-radius: 0;
-      --border: #656a78;
-    }
-    body {
-      grid-template-columns: 1fr min(65rem,95%) 1fr;
-      font-size: 1rem;
-    }
-    </style>
-    <div style="text-align: center; margin: 3.5rem .5rem; margin-bottom: 1.5rem">
-      <h3 style="font-weight: 750;">Try Cognate Online</h3>
+    <div style="text-align: center; margin: 5rem .5rem; margin-bottom: 2.5rem">
+      <h3 style="font-weight: 650;">Try Cognate Online</h3>
     </div>
     <main>
       <style>
@@ -41,10 +21,6 @@
       .container pre p.section-name{
         color: var(--text-light);
         margin-top: 0;
-      }
-
-      pre code {
-        line-height: 1;
       }
 
       @media (min-width: 800px) {
@@ -95,10 +71,6 @@
         border-radius: var(--standard-border-radius);
       }
 
-      .hidden {
-        display: none;
-      }
-
       @media (max-width: 799px) {
         .cm-editor {
           height: 50vh;
@@ -112,7 +84,7 @@
         }
       }
       </style>
-      <div class="notice hidden" id="external-error-box" style="background-color: #352d1b; font-size: .9rem">
+      <div class="notice hidden" id="external-error-box">
         <style>
         #external-error p {
           margin: 0;
@@ -157,19 +129,6 @@
         </div>
       </div>
     </main>
-    <style>
-    main {
-      margin-bottom: 5rem;
-    }
-
-    nav a {
-      margin-right: 1rem;
-    }
-
-    nav {
-      text-align: center;
-    }
-    </style>
     <script src="tree-sitter.js"></script>
     <script type="module" src="main.js"></script>
     <footer>
