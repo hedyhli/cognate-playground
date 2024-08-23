@@ -15,26 +15,19 @@
       --accent: #ffb300;
       --accent-hover: #ffe099;
       --accent-text: var(--bg);
-      --code: #f06292;
       --preformatted: #c0c6d1;
       --disabled: #111;
-      --standard-border-radius: 3px;
-      --border: #535764;
+      --standard-border-radius: 0;
+      --border: #656a78;
     }
     body {
       grid-template-columns: 1fr min(65rem,95%) 1fr;
       font-size: 1rem;
     }
     </style>
-    <header>
-      <nav>
-        <a href="https://github.com/hedyhli/cognate-playground">Source</a>
-        <a href="https://github.com/cognate-lang/cognate">Cognate</a>
-        <a href="https://cognate-lang.github.io/learn.html">Tutorial</a>
-      </nav>
-      <h4>Cognate Playground</h4>
-      <small>A fully client-side interactive playground for the Cognate programming language.</small>
-    </header>
+    <div style="text-align: center; margin: 3.5rem .5rem; margin-bottom: 1.5rem">
+      <h3 style="font-weight: 750;">Try Cognate Online</h3>
+    </div>
     <main>
       <style>
       .container select {
@@ -90,6 +83,10 @@
           align-self: stretch;
           justify-self: stretch;
         }
+
+        .cm-editor {
+          height: 100%;
+        }
       }
 
       .container #input-container {
@@ -98,12 +95,21 @@
         border-radius: var(--standard-border-radius);
       }
 
-      .cm-editor {
-        height: 100%;
-      }
-
       .hidden {
         display: none;
+      }
+
+      @media (max-width: 799px) {
+        .cm-editor {
+          height: 50vh;
+        }
+
+        .container pre {
+          margin-top: .75rem;
+          margin-bottom: 0;
+          min-height: 5rem;
+          max-height: 50vh;
+        }
       }
       </style>
       <div class="notice hidden" id="external-error-box" style="background-color: #352d1b; font-size: .9rem">
@@ -151,8 +157,28 @@
         </div>
       </div>
     </main>
+    <style>
+    main {
+      margin-bottom: 5rem;
+    }
+
+    nav a {
+      margin-right: 1rem;
+    }
+
+    nav {
+      text-align: center;
+    }
+    </style>
     <script src="tree-sitter.js"></script>
     <script type="module" src="main.js"></script>
-    <footer><p>This project is work in progress. Kindly report any issues to <a href="https://github.com/hedyhli/cognate-playground/issues">the GitHub repo</a>, and when in doubt, always verify with the official Cognate compiler.</p></footer>
+    <footer>
+      <nav>
+        <a href="https://github.com/hedyhli/cognate-playground">Source</a>
+        <a href="https://github.com/cognate-lang/cognate">Cognate</a>
+        <a href="https://cognate-lang.github.io/learn.html">Tutorial</a>
+      </nav>
+      <p>This playground uses a JavaScript implementation of Cognate. When in doubt, always verify with the official Cognate compiler.</p>
+    </footer>
   </body>
 </html>
