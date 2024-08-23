@@ -222,6 +222,9 @@ select:not([multiple]) {
   background-repeat: no-repeat;
   padding-inline-end: 25px;
 }
+select:focus{
+  outline:none;
+}
 /* checkbox and radio button style */
 input[type="checkbox"],
 input[type="radio"] {

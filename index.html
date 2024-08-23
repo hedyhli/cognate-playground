@@ -5,15 +5,11 @@
   </head>
 
   <body>
-    <div style="text-align: center; margin: 5rem .5rem; margin-bottom: 2.5rem">
+    <div style="text-align: center; margin-top: 5rem; margin-bottom: 1rem">
       <h3 style="font-weight: 650;">Try Cognate Online</h3>
     </div>
     <main>
       <style>
-      .container select {
-        width: 100%;
-      }
-
       .container .grid-item {
         overflow-x: auto;
       }
@@ -37,18 +33,19 @@
             "input output"
             "input output"
             "input output"
+            "input output"
             "input stack"
             "input stack"
             "input errors"
             "input errors"
-            "select errors";
+            "input errors";
           grid-template-columns: repeat(2, 1fr);
-          grid-template-rows: repeat(10, 1fr);
+          grid-template-rows: repeat(11, 1fr);
           row-gap: .5rem;
           column-gap: .5rem;
         }
 
-        .container pre, .container select, .container #input {
+        .container pre, .container #input {
           margin-top: 0;
           margin-bottom: 0;
           height: 100%;
@@ -95,26 +92,24 @@
         <div id="external-error" style="line-height: 1; margin-bottom: 1rem"></div>
         <a id="notice-dismiss" href="#">Dismiss</a>
       </div>
+      <select id="select-example" name="example" style="height: 2.5rem; min-width: 10rem; margin-bottom: .5rem">
+        <option value="custom" selected>Custom</option>
+        <optgroup label="Types">
+          <option value="numbers">Numbers</option>
+          <option value="variables">Variables</option>
+          <option value="strings">Strings</option>
+          <option value="blocks">Blocks</option>
+          <option value="functions">Functions</option>
+          <option value="lists">Lists</option>
+        </optgroup>
+        <optgroup label="Examples">
+          <option value="hanoi">Hanoi</option>
+          <option value="fizzbuzz">Fizzbuzz</option>
+          <option value="primes">Primes</option>
+          <option value="fib">Fibonacci</option>
+        </optgroup>
+      </select>
       <div class="container">
-        <div style="grid-area: select;" class="grid-item">
-          <select id="select-example" name="example">
-            <option value="custom" selected>Custom</option>
-            <optgroup label="Types">
-              <option value="numbers">Numbers</option>
-              <option value="variables">Variables</option>
-              <option value="strings">Strings</option>
-              <option value="blocks">Blocks</option>
-              <option value="functions">Functions</option>
-              <option value="lists">Lists</option>
-            </optgroup>
-            <optgroup label="Examples">
-              <option value="hanoi">Hanoi</option>
-              <option value="fizzbuzz">Fizzbuzz</option>
-              <option value="primes">Primes</option>
-              <option value="fib">Fibonacci</option>
-            </optgroup>
-          </select>
-        </div>
         <div style="grid-area: input" class="grid-item" id="input-container">
           <div id="input"></div>
         </div>
