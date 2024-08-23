@@ -54,6 +54,8 @@ Implementation
 - [X] Closures
 - [X] Tests
 - [ ] Consider using something like decimal.js for floating point precision
+- [ ] Mock I/O
+- [ ] Dict
 
 Others
 - [X] Presets of example code
@@ -73,3 +75,4 @@ Others
 - [X] Handle failure to fetch prelude
 - [X] Fix tree-sitter edit conversions for pair wrapping (editor feature)
 - [ ] Editor settings
+- [ ] Resizable grid
