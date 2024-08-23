@@ -10,51 +10,44 @@
     </div>
     <main>
       <style>
-      .container .grid-item {
-        overflow-x: auto;
-      }
-
-      .container pre p.section-name{
+      .container p.section-name{
         color: var(--text-light);
         margin-top: 0;
+        margin-bottom: .5rem;
+      }
+
+      #results pre p {
+        margin-top: .5rem;
+        margin-bottom: 0;
+      }
+
+      #results pre ol {
+        margin-top: .5rem;
+      }
+
+      .container #results > div {
+        margin-bottom: 2rem;
       }
 
       @media (min-width: 800px) {
         .container {
           height: 40rem;
-          display: grid;
-          justify-items: stretch;
-          align-items: stretch;
-          justify-content: stretch;
-          align-content: stretch;
-          grid-template-areas:
-            "input output"
-            "input output"
-            "input output"
-            "input output"
-            "input output"
-            "input output"
-            "input stack"
-            "input stack"
-            "input errors"
-            "input errors"
-            "input errors";
-          grid-template-columns: repeat(2, 1fr);
-          grid-template-rows: repeat(11, 1fr);
-          row-gap: .5rem;
-          column-gap: .5rem;
+          display: flex;
+          flex-direction: row;
+          justify-content: space-between;
+          gap: .5rem;
         }
 
-        .container pre, .container #input {
-          margin-top: 0;
-          margin-bottom: 0;
+        .container #results, .container #input-container {
+          margin: 0;
+          width: 50%;
           height: 100%;
         }
 
-        .container .grid-item {
-          height: 100%;
-          align-self: stretch;
-          justify-self: stretch;
+        .container #results {
+          display: flex;
+          flex-direction: column;
+          overflow-x: auto;
         }
 
         .cm-editor {
@@ -62,7 +55,7 @@
         }
       }
 
-      .container #input-container {
+      .container #input-container, .container #results {
         background-color: var(--accent-bg);
         border: 1px solid var(--border);
         border-radius: var(--standard-border-radius);
@@ -70,15 +63,32 @@
 
       @media (max-width: 799px) {
         .cm-editor {
-          height: 50vh;
+          min-height: 40vh;
+          /* There needs to be space outside the editor for scolling the rest of the page */
+          max-height: 70vh;
         }
 
-        .container pre {
-          margin-top: .75rem;
-          margin-bottom: 0;
-          min-height: 5rem;
-          max-height: 50vh;
+        .container #results {
+          margin-top: .5rem;
         }
+
+        #results pre {
+          max-height: 50vh;
+          overflow-x: auto;
+        }
+      }
+
+      .container #results {
+        font-family: var(--mono-font);
+        padding: 1rem 1.5rem;
+      }
+
+      #results pre {
+        border: none;
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        min-height: 3rem;
       }
       </style>
       <div class="notice hidden" id="external-error-box">
@@ -110,17 +120,22 @@
         </optgroup>
       </select>
       <div class="container">
-        <div style="grid-area: input" class="grid-item" id="input-container">
+        <div id="input-container">
           <div id="input"></div>
         </div>
-        <div style="grid-area: output" class="grid-item">
-          <pre><p class="section-name">Output:</p><code id="output"></code></pre>
-        </div>
-        <div style="grid-area: stack" class="grid-item">
-          <pre><p class="section-name">Stack:</p><code id="output-debug"></code></pre>
-        </div>
-        <div style="grid-area: errors" class="grid-item">
-          <pre style="text-wrap: wrap;"><p class="section-name">Errors:</p><code id="output-error"></code></pre>
+        <div id="results">
+          <div id="errors-container">
+            <p class="section-name">Errors:</p>
+            <pre style="text-wrap: wrap;" id="output-error"></pre>
+          </div>
+          <div id="output-container">
+            <p class="section-name">Output:</p>
+            <pre id="output"></pre>
+          </div>
+          <div id="debug-container">
+            <p class="section-name">Stack:</p>
+            <pre style="text-wrap: wrap;" id="output-debug"></pre>
+          </div>
         </div>
       </div>
     </main>

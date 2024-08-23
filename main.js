@@ -13,6 +13,9 @@ const $externalError = document.getElementById("external-error");
 const $externalErrorBox = document.getElementById("external-error-box");
 const $noticeDismiss = document.getElementById("notice-dismiss");
 const $outputError = document.getElementById("output-error");
+const $errorsContainer = document.getElementById("errors-container");
+const $debugContainer = document.getElementById("debug-container");
+const $outputContainer = document.getElementById("output-container");
 const $outputDebug = document.getElementById("output-debug");
 
 const STORAGE_KEY = "cognate-playground";
@@ -47,7 +50,20 @@ const App = {
       }).finally(() => {
         setPreludeReady();
         App.runner.run(Store.getInput());
+        App.postRun();
       });
+  },
+  postRun: () => {
+    if ($output.innerHTML == '') {
+      $outputContainer.classList.add("hidden");
+    } else {
+      $outputContainer.classList.remove("hidden");
+    }
+    if ($outputDebug.innerHTML == '') {
+      $debugContainer.classList.add("hidden");
+    } else {
+      $debugContainer.classList.remove("hidden");
+    }
   },
   init: async () => {
     await initTS();
@@ -103,6 +119,7 @@ const App = {
             // TODO: Do it in a worker thread or some other asynchronous way to
             // prevent blocking view updates.
             App.runner.run(update.state.doc.toString(), !App.selectionChange);
+            App.postRun();
             App.selectionChange = false;
           }
         }
@@ -126,17 +143,20 @@ const Output = {
 let Errors = [];
 
 function redrawErrors(heading) {
-  let html = textLight("None!");
   if (Errors.length != 0) {
-    html = '';
+    let html = '';
     if (heading) {
-      html += "<p>heading</p>";
+      html += `<p>${heading}</p>`;
     }
     html += "<ol>";
     html += Errors.map((item) => `<li>${item}</li>`).join("");
     html += "</ol>";
+    $outputError.innerHTML = html;
+    $errorsContainer.classList.remove("hidden");
+  } else {
+    $outputError.innerHTML = '';
+    $errorsContainer.classList.add("hidden");
   }
-  $outputError.innerHTML = html;
 }
 
 const ExamplePresets = {

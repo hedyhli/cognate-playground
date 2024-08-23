@@ -29,6 +29,10 @@ export const editorTheme = EditorView.theme({
     fontFamily: "var(--sans-font)",
   },
 
+  "&.cm-focused": {
+    outline: "none", // TODO: a11y
+  },
+
   ".cm-content": {
     caretColor: "white",
   },
