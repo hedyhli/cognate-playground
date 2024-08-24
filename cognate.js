@@ -1,4 +1,4 @@
-// Uncomment for tests
+// Uncomment for tests and packaging
 // import TreeSitter from 'web-tree-sitter';
 import { ident2kind, Builtins, initIdent2kind, normalizeIdentifier, value2object } from './builtins.js';
 
@@ -882,4 +882,6 @@ export class Runner {
     this.callStackSize -= 1;
     return {stack: op, error: error, env: env};
   }
-}
+};
+
+export { initIdent2kind, ident2kind };

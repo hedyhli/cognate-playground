@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build-lib": "sed -i '2s_// import Tr_import Tr_' cognate.js && vite build -c vite.lib.config.js && sed -i '2s_import Tr_// import Tr_' cognate.js",
     "lezer": "lezer-generator editor/cognate.grammar -o editor/parser.js",
     "test": "sed -i '2s_// import Tr_import Tr_' cognate.js; mocha editor/test/test.js test.js; sed -i '2s_import Tr_// import Tr_' cognate.js"
   },
