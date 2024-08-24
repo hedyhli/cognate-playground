@@ -7,7 +7,7 @@ Canonical instance: <https://cognate-playground.hedy.dev/>
 An interactive playground for [Cognate](https://cognate-lang.github.io) that
 remains completely client-side.
 
-<img src="https://raw.githubusercontent.com/hedyhli/cognate-playground/main/demo.png" width=800 />
+<img src="https://raw.githubusercontent.com/hedyhli/cognate-playground/main/screenshot.png" width=800 />
 
 It currently supports about 80% of all builtins from the C prelude, and all
 types except Dict and IO.
