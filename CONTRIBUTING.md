@@ -9,11 +9,9 @@ pnpm install
 ## Development
 
 ```
-pnpm dev
-
-# Lezer grammar
-pnpm lezer
-pnpm test
+pnpm dev   # Start dev server with vite
+pnpm lezer # Build Lezer grammar
+pnpm test  # Tests for the interpreter and Lezer parser
 ```
 
 ## Deployment
@@ -21,4 +19,11 @@ pnpm test
 ```
 pnpm build
 ls dist
+```
+
+## Package
+
+```
+pnpm build-lib
+ls dist/lib
 ```

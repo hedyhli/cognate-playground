@@ -5,15 +5,12 @@
 Canonical instance: <https://cognate-playground.hedy.dev/>
 
 An interactive playground for [Cognate](https://cognate-lang.github.io) that
-remains completely client-side.
+uses a JavaScript implementation of Cognate.
 
 <img src="https://raw.githubusercontent.com/hedyhli/cognate-playground/main/screenshot.png" width=800 />
 
 It currently supports about 80% of all builtins from the C prelude, and all
 types except Dict and IO.
-
-[Tree-sitter](https://github.com/hedyhli/tree-sitter-cognate) is used as the
-parser and the runtime is written entirely in JavaScript.
 
 Files of interest
 - index.html
@@ -70,6 +67,9 @@ Others
 - [X] (1) Highlight references of functions in scope
 - [X] Show parser errors inline in the editor
 - [ ] More informative runtime errors
+  - [ ] Format the traceback similar to Python
+  - [ ] Collapse recursive calls and show surrounding code(?)
+  - [ ] Clicks on symbols can navigate to the definition/reference in the editor
 - [X] Fix (1); highlight with static analysis rather than at runtime
 - [ ] [perf] Find ways to accurately cache for (1)
 - [X] Handle failure to fetch prelude
