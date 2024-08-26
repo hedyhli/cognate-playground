@@ -319,8 +319,10 @@ export class Runner {
           break;
         case "identifier":
           if (userCode) {
-            if (ident2kind[node.text]) {
-              this.editor.addMark(node, ident2kind[node.text]);
+            // TODO: Prevent extra call in node2object
+            let normalized = normalizeIdentifier(node.text);
+            if (ident2kind[normalized]) {
+              this.editor.addMark(node, ident2kind[normalized]);
             }
           }
         case "number":
