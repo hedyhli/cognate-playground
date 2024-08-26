@@ -52,7 +52,7 @@ export const cognateCompletion = cognateLanguage.data.of({
 })
 
 const charHelp = {
-  '(': "<strong>Left parenthesis</strong> begins a block. <strong>Blocks</strong> introduce new scope; Cognate supports both <a href=\"https://en.wikipedia.org/wiki/Variable_shadowing\">variable shadowing</a> and JavaScript-style <a href=\"https://en.wikipedia.org/wiki/Variable_hoisting\">hoisting</a>.",
+  '(': "<strong>Left parenthesis</strong> begins a block. <strong>Blocks</strong> are closures that introduce new scope; Cognate supports both <a href=\"https://en.wikipedia.org/wiki/Variable_shadowing\">variable shadowing</a> and JavaScript-style <a href=\"https://en.wikipedia.org/wiki/Variable_hoisting\">hoisting</a>.<br><br>Unlike blocks introduced by curly braces in C-like languages, Cognate blocks are pushed onto the stack like other values and are not executed immediately. Bind it to a symbol with <strong>Let</strong> and execute it using <strong>Do</strong>.",
   ')': "<strong>Right parenthesis</strong> is the closing delimiter of a block.",
   ';': "<strong>Semicolon</strong> marks the end of a statement. Items are pushed onto the stack in reverse of the order they're written in a statement.",
 };
