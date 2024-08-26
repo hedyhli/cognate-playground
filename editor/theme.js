@@ -105,6 +105,23 @@ export const editorTheme = EditorView.theme({
     borderTopColor: c.tooltipBackground,
     borderBottomColor: c.tooltipBackground
   },
+
+  ".cm-tooltip.cm-tooltip-hover .hover-symbol": {
+    fontFamily: "var(--mono-font)",
+    padding: ".3rem .6rem",
+    fontSize: ".9rem",
+    maxWidth: "20rem",
+  },
+  ".cm-tooltip-hover.cm-tooltip-above": {
+    marginTop: "-.3rem",
+  },
+  ".cm-tooltip-hover.cm-tooltip-below": {
+    marginTop: ".3rem",
+  },
+  ".cm-tooltip-lint ~ .hover-symbol": {
+    display: "none",
+  },
+
   ".cm-tooltip.cm-tooltip-autocomplete > ul": {
     fontFamily: "var(--mono-font)",
     "& > li": {

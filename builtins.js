@@ -54,6 +54,11 @@ function singleNumberFn(fn, name) {
   };
 }
 
+export const Docs = {
+  Def: "<strong>Def</strong> defines a function in the current scope. Like variables, functions cannot be redefined, but they can be shadowed.",
+  Let: "<strong>Let</strong> binds the last item on the stack to a symbol. Variables are immutable and cannot be redefined, but they can be shadowed. To have mutability, you can use the <strong>Box</strong> type instead, and assign new values with <strong>Set</strong>.",
+};
+
 export const Builtins = {
   // Value checks
   "Zero?": {
