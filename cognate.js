@@ -49,10 +49,11 @@ export function initPrelude(preludeText) {
   // Exec
   try {
     result = runner.process(result.rootBlock, []);
-  }
-  catch (err) {
-    if (err instanceof BeginSignal) result.error = "cannot exit 'Begin' block when not inside it";
-    else throw(err);
+  } catch (err) {
+    if (err instanceof BeginSignal)
+      result.error = "cannot exit 'Begin' block when not inside it first";
+    else
+      throw err;
   }
   if (result.error != '') {
     throw new PreludeError(`failed to execute prelude: ${result.error}`);
@@ -489,10 +490,11 @@ export class Runner {
       this.callStackSize = 0;
       try {
           result = this.process(result.rootBlock, []);
-      }
-      catch (err) {
-        if (err instanceof BeginSignal) result.error = "cannot exit 'Begin' block when not inside it first";
-        else throw(err);
+      } catch (err) {
+        if (err instanceof BeginSignal)
+          result.error = "cannot exit 'Begin' block when not inside it first";
+        else
+          throw err;
       }
       if (result.stack !== undefined) this.$stack.innerHTML = this.reprArr(result.stack);
       if (result.error != '') {
@@ -819,36 +821,33 @@ export class Runner {
 						case 'Begin': {
               let block = expect(exists(op.pop(), 'block'), 'block');
               if (block == undefined) {
-                error = `in ${this.textMarked('List')}: ${error}`;
+                error = `in ${this.textMarked('Begin')}: ${error}`;
                 break;
               }
 
-              let id_err = new BeginSignal();
+              let expectError = new BeginSignal();
 
               op.push({
                 type: 'block',
-                body: [{type: 'identifier', value: '_endBegin'}],
-                env: { id_err },
+                body: [{type: 'identifier', value: '_exitBegin'}],
+                env: { error: expectError },
               });
 
-              let result = { error: "" }
+              let result = { error: "" };
               try {
                 result = this.process(block, op);
-              }
-              catch (id2) {
-                if (id_err !== id2) throw(id2);
+              } catch (err) {
+                if (err !== expectError) throw err;
               }
 
               if (result.error != "") {
                 error = `in ${this.textMarked('Begin')}: ${result.error}`;
-                break;
               }
-
               break;
             }
 
-            case '_endBegin': {
-              throw(env.id_err);
+            case '_exitBegin': {
+              throw env.error;
             }
 
             // I/O
