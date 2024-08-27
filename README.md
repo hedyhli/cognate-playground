@@ -9,7 +9,7 @@ uses a JavaScript implementation of Cognate.
 
 <img src="https://raw.githubusercontent.com/hedyhli/cognate-playground/main/screenshot.png" width=800 />
 
-It currently supports about 80% of all builtins from the C prelude, and all
+It currently supports about 90% of all builtins from the C prelude, and all
 types except Dict and IO.
 
 Files of interest
