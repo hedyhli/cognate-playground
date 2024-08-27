@@ -10,9 +10,11 @@ export class PreludeError extends Error {
   }
 }
 
+// Acts as a signal for the Begin continuation. It should only be treated as an
+// error if caught outside of Begin.
 export class BeginSignal extends Error {
   constructor() {
-    super("This is the signal for the 'Begin' continuation. This is only an error if outside the source 'Begin'.");
+    super("cannot exit 'Begin' from outside the 'Begin' block");
   }
 }
 
@@ -47,13 +49,11 @@ export function initPrelude(preludeText) {
     throw new PreludeError("failed to parse prelude");
   }
   // Exec
+  result.error = "";
   try {
-    result = runner.process(result.rootBlock, []);
+    result = runner.process(result.rootBlock, [], []);
   } catch (err) {
-    if (err instanceof BeginSignal)
-      result.error = "cannot exit 'Begin' block when not inside it first";
-    else
-      throw err;
+    result.error = result.error || err.message;
   }
   if (result.error != '') {
     throw new PreludeError(`failed to execute prelude: ${result.error}`);
@@ -488,13 +488,11 @@ export class Runner {
       this.redrawErrors();
       // Exec
       this.callStackSize = 0;
+      result.error = "";
       try {
-          result = this.process(result.rootBlock, []);
+        result = this.process(result.rootBlock, [], []);
       } catch (err) {
-        if (err instanceof BeginSignal)
-          result.error = "cannot exit 'Begin' block when not inside it first";
-        else
-          throw err;
+        result.error = result.error || err.message;
       }
       if (result.stack !== undefined) this.$stack.innerHTML = this.reprArr(result.stack);
       if (result.error != '') {
@@ -513,7 +511,7 @@ export class Runner {
 
   // Execute a block within a possibly `scoped` environment, with an initial
   // stack `op`.
-  process(/*readonly*/ currentBlock, op) {
+  process(/*readonly*/ currentBlock, op, beginSignals) {
     let env = {...currentBlock.env, parent: currentBlock.env.parent};
     let error = "";
 
@@ -629,12 +627,19 @@ export class Runner {
         {
             let fn = getVar(item);
             if (fn && fn.type == 'function') {
-              let call_result = this.process(fn.block, op);
-              if (call_result.error != "") {
-                error = `in ${this.textMarked(item.value)}: ${call_result.error}`;
+              let result = { error: "" };
+              try {
+                result = this.process(fn.block, op, beginSignals);
+              } catch (err) {
+                if (beginSignals.includes(err))
+                  throw err;
+                result.error = result.error || err.message;
+              }
+              if (result.error != "") {
+                error = `in ${this.textMarked(item.value)}: ${result.error}`;
                 break;
               }
-              op = call_result.stack;
+              op = result.stack;
               continue;
             }
           }
@@ -693,7 +698,14 @@ export class Runner {
               }
 
               let list = [];
-              let result = this.process(block, list);
+              let result = { error: "" };
+              try {
+                result = this.process(block, list, beginSignals);
+              } catch (err) {
+                if (beginSignals.includes(err))
+                  throw err;
+                result.error = result.error || err.message;
+              }
               if (result.error != "") {
                 error = `in ${this.textMarked('List')}: ${result.error}`;
                 break;
@@ -825,19 +837,22 @@ export class Runner {
                 break;
               }
 
-              let expectError = new BeginSignal();
+              let beginSignal = new BeginSignal();
 
               op.push({
                 type: 'block',
                 body: [{type: 'identifier', value: '_exitBegin'}],
-                env: { error: expectError },
+                env: { beginSignal },
               });
 
               let result = { error: "" };
               try {
-                result = this.process(block, op);
+                result = this.process(block, op, [...beginSignals, beginSignal]);
               } catch (err) {
-                if (err !== expectError) throw err;
+                if (beginSignals.includes(err))
+                  throw err;
+                if (err !== beginSignal)
+                  result.error = result.error || err.message;
               }
 
               if (result.error != "") {
@@ -847,7 +862,7 @@ export class Runner {
             }
 
             case '_exitBegin': {
-              throw env.error;
+              throw env.beginSignal;
             }
 
             // I/O

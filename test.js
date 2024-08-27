@@ -61,4 +61,28 @@ describe("runner", () => {
       }
     });
   }
+
+  it("begin error", () => {
+    r.tree = undefined;
+    out = '';
+    err = '';
+    r.run(`
+        Begin ();
+        Do;
+      `);
+    assert.match(err, /^in Do:.*Begin/);
+  });
+
+  it("nested begin error", () => {
+    r.tree = undefined;
+    out = '';
+    err = '';
+    r.run(`
+      Begin (
+        Begin ();
+        Do;
+      );
+      `);
+    assert.match(err, /^in Begin: in Do:.*Begin/);
+  });
 });
