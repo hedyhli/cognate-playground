@@ -71,11 +71,6 @@ export const Builtins = {
     returns: 'number',
     fn: a => a.value == 0 ? a : { error: "zero assertion failed" },
   },
-  "Integer!": {
-    params: [{name: 'integer', type: 'number'}],
-    returns: 'number',
-    fn: a => Number.isInteger(a.value) ? a : { error: "zero assertion failed" },
-  },
   "Integer?": {
     params: [{name: 'value', type: 'any'}],
     returns: 'boolean',
