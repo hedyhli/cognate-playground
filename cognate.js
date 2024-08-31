@@ -18,6 +18,13 @@ export class BeginSignal extends Error {
   }
 }
 
+// Acts as a signal for the Stop function.
+export class StopSignal extends Error {
+  constructor(message, options) {
+    super(message, options);
+  }
+}
+
 // Global state
 const G = {
   preludeEnv: {},
@@ -53,7 +60,8 @@ export function initPrelude(preludeText) {
   try {
     result = runner.process(result.rootBlock, [], []);
   } catch (err) {
-    result.error = result.error || err.message;
+    if (!(err instanceof StopSignal))
+      result.error = result.error || err.message;
   }
   if (result.error != '') {
     throw new PreludeError(`failed to execute prelude: ${result.error}`);
@@ -492,7 +500,8 @@ export class Runner {
       try {
         result = this.process(result.rootBlock, [], []);
       } catch (err) {
-        result.error = result.error || err.message;
+        if (!(err instanceof StopSignal))
+          result.error = result.error || err.message;
       }
       if (result.stack !== undefined) this.$stack.innerHTML = this.reprArr(result.stack);
       if (result.error != '') {
@@ -631,7 +640,7 @@ export class Runner {
               try {
                 result = this.process(fn.block, op, beginSignals);
               } catch (err) {
-                if (beginSignals.includes(err))
+                if (beginSignals.includes(err) || err instanceof StopSignal)
                   throw err;
                 result.error = result.error || err.message;
               }
@@ -702,7 +711,7 @@ export class Runner {
               try {
                 result = this.process(block, list, beginSignals);
               } catch (err) {
-                if (beginSignals.includes(err))
+                if (beginSignals.includes(err) || err instanceof StopSignal)
                   throw err;
                 result.error = result.error || err.message;
               }
@@ -830,6 +839,9 @@ export class Runner {
               }
               break;
             }
+            case 'Stop': {
+              throw new StopSignal();
+            }
 						case 'Begin': {
               let block = expect(exists(op.pop(), 'block'), 'block');
               if (block == undefined) {
@@ -849,7 +861,7 @@ export class Runner {
               try {
                 result = this.process(block, op, [...beginSignals, beginSignal]);
               } catch (err) {
-                if (beginSignals.includes(err))
+                if (beginSignals.includes(err) || err instanceof StopSignal)
                   throw err;
                 if (err !== beginSignal)
                   result.error = result.error || err.message;
