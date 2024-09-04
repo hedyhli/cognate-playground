@@ -1,7 +1,24 @@
-Print "PASS: Skipping I/O";
-~~ Let S be With "tests/io.txt" "r" ( Read-file );
+Print "XFAIL: IO"
+~~ With \read "tests/io.txt" (
 ~~
-~~ Print If == "foo\nbar\n" S
-~~ 	"PASS: Reading multi-line file to string"
-~~ else
-~~ 	"FAIL: Reading multi-line file to string";
+~~ 	Let F be the file;
+~~
+~~
+~~ 	Let S be Read-file F;
+~~
+~~ 	Print If == "foo\nbar\n" S
+~~ 		"PASS: Reading multi-line file to string"
+~~ 	else
+~~ 		"FAIL: Reading multi-line file to string";
+~~
+~~ 	Seek from \start to position 0 in F;
+~~
+~~ 	Let L be Read-line F;
+~~
+~~ 	Print If == "foo\n" L
+~~ 		"PASS: Reading first line of file to string"
+~~ 	else
+~~ 		"FAIL: Reading first line of file to string";
+~~
+~~
+~~ );

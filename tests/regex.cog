@@ -7,8 +7,8 @@ Print If And Do Regex R1 "12EFab" and Not Do Regex R1 "foo123"
 else
   "FAIL: Simple regex to identify hex integers";
 
-Print "XFAIL: Posix character classes";
 ~~ Same regex as before; but with POSIX character classes
+Print "XFAIL: Posix character classes";
 ~~ Let R2 be "^[[:xdigit:]]*$";
 ~~ Print If And Do Regex R2 "12EFab" and Not Do Regex R2 "foo123"
 ~~   "PASS: Regex to identify hex integers (character class)"
@@ -28,7 +28,7 @@ Print If == List (Do Regex-match R4 "13.37") List (True "13" ".37")
 else
   "FAIL: Capture sub-expressions for integer and fractional parts";
 
-Print "XFAIL: Regex-match POSIX character groups";
+Print "XFAIL: Posix character classes";
 ~~ Let R5 be "([[:alnum:]]+)";
 ~~ Let B Do Regex-match R5 "[->+<]";
 ~~ Print If B

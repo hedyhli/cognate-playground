@@ -60,8 +60,10 @@ export function initPrelude(preludeText) {
   try {
     result = runner.process(result.rootBlock, [], []);
   } catch (err) {
-    if (!(err instanceof StopSignal))
+    if (!(err instanceof StopSignal)) {
+      console.error(err);
       result.error = result.error || err.message;
+    }
   }
   if (result.error != '') {
     throw new PreludeError(`failed to execute prelude: ${result.error}`);
@@ -149,9 +151,13 @@ function reprString(str) {
 }
 
 // Object to string for the output
-function cognate2string(item, quotedString) {
+function cognate2string(item, quotedString, checkedBoxes) {
   if (item == undefined) {
     return undefined;
+  }
+
+  if (!checkedBoxes) {
+    checkedBoxes = [];
   }
 
   switch (item.type) {
@@ -171,13 +177,17 @@ function cognate2string(item, quotedString) {
     case 'boolean':
       return value2object.string(item.value ? 'True' : 'False');
     case 'box': {
-      let s = cognate2string(item.value[0], quotedString);
-      s.value = `<${s.value}>`;
+      if (checkedBoxes.find((check) => check == item)) {
+        return value2object.string('...');
+      }
+      checkedBoxes.push(item);
+      let s = cognate2string(item.value[0], quotedString, checkedBoxes);
+      s.value = `[${s.value}]`;
       return s;
     }
     case 'list':
       // XXX: Does not support unknown item type within the map call.
-      return value2object.string(`(${[...item.list].reverse().map(item => cognate2string(item, true).value).join(', ')})`);
+      return value2object.string(`(${[...item.list].reverse().map(item => cognate2string(item, true).value).join(' ')})`);
     default:
       return {
         error: `unknown item of type ${escape(item.type)}, value ${escape(item)}`,
@@ -500,8 +510,10 @@ export class Runner {
       try {
         result = this.process(result.rootBlock, [], []);
       } catch (err) {
-        if (!(err instanceof StopSignal))
+        if (!(err instanceof StopSignal)) {
+          console.error(err);
           result.error = result.error || err.message;
+        }
       }
       if (result.stack !== undefined) this.$stack.innerHTML = this.reprArr(result.stack);
       if (result.error != '') {
@@ -642,6 +654,7 @@ export class Runner {
               } catch (err) {
                 if (beginSignals.includes(err) || err instanceof StopSignal)
                   throw err;
+                console.error(err);
                 result.error = result.error || err.message;
               }
               if (result.error != "") {
@@ -713,6 +726,7 @@ export class Runner {
               } catch (err) {
                 if (beginSignals.includes(err) || err instanceof StopSignal)
                   throw err;
+                console.error(err);
                 result.error = result.error || err.message;
               }
               if (result.error != "") {
@@ -863,8 +877,10 @@ export class Runner {
               } catch (err) {
                 if (beginSignals.includes(err) || err instanceof StopSignal)
                   throw err;
-                if (err !== beginSignal)
+                if (err !== beginSignal) {
+                  console.error(err);
                   result.error = result.error || err.message;
+                }
               }
 
               if (result.error != "") {

@@ -35,8 +35,7 @@ function _compare(x, y) {
       return l1.every((a1, i) => _compare(a1, l2[i]));
     }
     case 'block':
-      // XXX: Cognac errors
-      return false;
+      return x == y;
     case 'box':
       return _compare(x.value[0], y.value[0]);
     case 'number':

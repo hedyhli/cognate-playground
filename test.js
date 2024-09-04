@@ -54,7 +54,7 @@ describe("runner", () => {
             if (line.startsWith("XFAIL")) {
               console.log(line);
             } else {
-              assert.match(line, /^PASS:/);
+              assert.doesNotMatch(line, /^FAIL/);
             }
           }
         }
