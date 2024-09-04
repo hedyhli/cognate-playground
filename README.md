@@ -10,11 +10,12 @@ uses a JavaScript implementation of Cognate.
 <img src="https://raw.githubusercontent.com/hedyhli/cognate-playground/main/screenshot.png" width=800 />
 
 It currently supports about 90% of all builtins from the C prelude, and all
-types except Dict and IO.
+types except Table and IO. Discrepancies of this implementation that can be
+illustrated by tests can be found with `XFAIL` markers in the tests directory.
 
 Files of interest
 - index.html
-- cognate.js -- the interpreter and runtime
+- cognate.js -- the parser, linter, and runtime
 - main.js -- the rest of the app excluding the editor
 - `editor/*` -- code relating to the editor component
 - `public/tree-sitter.{js,wasm}` -- from tree-sitter releases
@@ -26,7 +27,7 @@ Files of interest
 
 ### Todo
 
-Implementation
+The runtime and cognate implementation
 - [X] Working interpreter
 - [X] Escape HTML
 - [X] Proper "types"
@@ -45,29 +46,28 @@ Implementation
 - [X] Support `Box` and a proper `Set`
 - [X] String escape sequences
 - [X] Prevent stack overflows
-- [ ] Optimizations on the stack before parsing
-- [ ] Consider feasibility of transpiling to JS or use bytecode
+- [ ] Explore optimization options, consider feasibility of transpiling to JS or using bytecode
 - [X] Standard library coverage
 - [X] Closures
 - [X] Tests
 - [ ] Consider using something like decimal.js for floating point precision
 - [ ] Mock I/O
-- [ ] Dict
+- [ ] Table
 
-Others
+The Playground
 - [X] Presets of example code
 - [X] Save input in localstorage
 - [X] Live syntax highlighting
 - [X] [perf] Collect all tokens to be highlighted, and dispatch them in batch
 - [X] [perf] Avoid re-evaluating the prelude each time
 - [X] [perf] Send edits to tree-sitter instead
-- [ ] [perf] Consider using a worker thread for `redraw`, or some other way
-      to prevent blocking input, such as merging several successive edits in
-      one, or implementing a `Run` button.
+- [ ] Use worker thread for the runtime
+- [ ] Allow stopping current execution with a button
+- [ ] Auto-eval after a timeout, merging several successive edits in one
 - [X] (1) Highlight references of functions in scope
 - [X] Show parser errors inline in the editor
 - [ ] More informative runtime errors
-  - [ ] Format the traceback similar to Python
+  - [ ] Format the traceback similar to Python (or Web Console)
   - [ ] Collapse recursive calls and show surrounding code(?)
   - [ ] Clicks on symbols can navigate to the definition/reference in the editor
 - [X] Fix (1); highlight with static analysis rather than at runtime
@@ -75,4 +75,11 @@ Others
 - [X] Handle failure to fetch prelude
 - [X] Fix tree-sitter edit conversions for pair wrapping (editor feature)
 - [ ] Editor settings
-- [ ] Resizable grid
+  - [ ] Tooltip hints
+  - [ ] Autocomplete
+  - [ ] Tab handling
+  - [ ] Auto eval - if not, show a `Run` button
+- [ ] Lint for possible missing semicolons
+- [ ] Special function, (or just `Print`) that allows exploring data structures
+  interactively (similar to the Web Console) - but retain cognac behaviour with
+  `Show`
