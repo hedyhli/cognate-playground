@@ -111,6 +111,13 @@ export const editorTheme = EditorView.theme({
     padding: ".3rem .6rem",
     fontSize: ".9rem",
     maxWidth: "20rem",
+    "& > *:first-child": {
+      marginTop: ".25rem",
+    },
+    "& > *": {
+      marginTop: "1rem",
+      marginBottom: ".25rem",
+    },
   },
   ".cm-tooltip-hover.cm-tooltip-above": {
     marginTop: "-.3rem",
@@ -138,6 +145,31 @@ export const editorTheme = EditorView.theme({
   },
   ".cm-completionInfo.cm-completionInfo-right": {
     marginLeft: "5px",
+  },
+  ".cm-tooltip.cm-completionInfo": {
+    fontFamily: "var(--mono-font)",
+    fontSize: ".9rem",
+    padding: ".3rem .8rem",
+    "& > div": {
+      paddingTop: "1rem",
+    },
+    "& pre": {
+      whiteSpace: "pre-wrap",
+    },
+    "& > *, & div > *": {
+      marginBottom: "0 !important",
+      marginTop: "0 !important",
+    },
+  },
+  ".cm-tooltip.cm-completionInfo, .cm-tooltip.cm-tooltip-hover": {
+    "& pre code": {
+      lineHeight: "inherit",
+    },
+    "& pre": {
+      padding: ".75rem .75rem",
+      paddingRight: 0,
+      backgroundColor: "inherit",
+    }
   },
   ".cm-completionDetail": {
     float: "right",

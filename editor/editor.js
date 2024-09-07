@@ -70,7 +70,7 @@ const coreExtensions = [
     cmLanguage.bracketMatching(),
 
     cmAutocomplete.closeBrackets(),
-    cmAutocomplete.autocompletion({ closeOnBlur: true }),
+    cmAutocomplete.autocompletion({ closeOnBlur: false }),
 
     cmView.keymap.of([
         ...cmAutocomplete.closeBracketsKeymap,

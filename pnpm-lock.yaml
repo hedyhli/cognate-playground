@@ -35,6 +35,9 @@ importers:
       '@lezer/lr':
         specifier: ^1.4.2
         version: 1.4.2
+      marked:
+        specifier: ^14.1.1
+        version: 14.1.1
       web-tree-sitter:
         specifier: ^0.22.6
         version: 0.22.6
@@ -771,6 +774,11 @@ packages:
   log-symbols@4.1.0:
     resolution: {integrity: sha512-8XPvpAA8uyhfteu8pIvQxpJZ7SYYdpUivZpGy6sFsBuKRY/7rQGavedeB8aK+Zkyq6upMFVL/9AW6vOYzfRyLg==}
     engines: {node: '>=10'}
+
+  marked@14.1.1:
+    resolution: {integrity: sha512-eS59oxof5eBVDCKTs+mJbvB/6Vq137GbimF9wkTIlto2/B2ppY5nigUUQgKVmA3bI2mPTIshUyDj5j612ZxlQQ==}
+    engines: {node: '>= 18'}
+    hasBin: true
 
   merge2@1.4.1:
     resolution: {integrity: sha512-8q7VEgMJW4J8tcfVPy8g09NcQwZdbwFEqhe/WZkoIzjn/3TGDwtOCYtXGxA3O8tPzpczCCDgv+P2P5y00ZJOOg==}
@@ -1718,6 +1726,8 @@ snapshots:
     dependencies:
       chalk: 4.1.2
       is-unicode-supported: 0.1.0
+
+  marked@14.1.1: {}
 
   merge2@1.4.1: {}
 

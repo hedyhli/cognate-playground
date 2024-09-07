@@ -1,6 +1,7 @@
 // Uncomment for tests and packaging
 // import TreeSitter from 'web-tree-sitter';
-import { ident2kind, Builtins, initIdent2kind, normalizeIdentifier, value2object } from './builtins.js';
+import { ident2kind, Builtins, initIdent2kind, normalizeIdentifier, value2object, Docs as builtinsDocs } from './builtins.js';
+import * as marked from 'marked';
 
 const CALLSTACK_LIMIT = 3000;
 
@@ -301,6 +302,7 @@ export class Runner {
   parse(tree, rootEnv, userCode) {
     const root = tree.rootNode;
     let bail = false;
+    let doc = undefined;
 
     let rootBlock = node2object.block([], userCode);
     rootBlock.env.parent = rootEnv;
@@ -318,10 +320,6 @@ export class Runner {
       } else if (node.isNamed) {
         name = node.type;
       } else {
-        return;
-      }
-
-      if (name.endsWith("_comment")) {
         return;
       }
 
@@ -349,14 +347,29 @@ export class Runner {
           currentBlock.body.push(node2object.block([], userCode));
           currentBlock.body[currentBlock.body.length-1].env = currentBlock.env;
           break;
-        case "identifier":
+        case "multiline_comment":
+          doc = node.text.substring(1, node.text.length-1).trim();
+          break;
+        case "inline_comment":
+        case "line_comment":
+          return;
+        case "identifier": {
+          let normalized = normalizeIdentifier(node.text);
           if (userCode) {
             // TODO: Prevent extra call in node2object
-            let normalized = normalizeIdentifier(node.text);
             if (ident2kind[normalized]) {
               this.editor.addMark(node, ident2kind[normalized]);
             }
           }
+          if (normalized == 'Def') {
+            let obj = node2object.identifier(node, userCode);
+            obj.doc = doc;
+            currentBlock.body.push(obj);
+            doc = undefined;
+            break;
+          }
+          // Fallthrough;
+        }
         case "number":
         case "boolean":
         case "symbol":
@@ -422,6 +435,10 @@ export class Runner {
                   bail = true;
                 } else {
                   currentBlock.env[previous.value] = { type: '_predeclared', kind: item.value };
+                }
+                if (!userCode && currentBlock.env.parent == undefined) {
+                  console.log("setting", previous.value);
+                  builtinsDocs[previous.value] = marked.parse(item.doc);
                 }
               }
             }
@@ -497,6 +514,7 @@ export class Runner {
 
     // Parse
     this.tree = G.ts.parser.parse(code, this.tree);
+    console.table(builtinsDocs);
     let result = this.parse(this.tree, G.preludeEnv, true);
     this.analyze(result.rootBlock);
     this.editor.applyMarks(true);
@@ -702,7 +720,7 @@ export class Runner {
                 error = `in ${this.textMarked('Def')}: ${error}`;
                 break;
               }
-              env[a.value] = { type: 'function', block: b };
+              env[a.value] = { type: 'function', block: b, doc: item.doc };
               break;
             }
             case 'Let': {

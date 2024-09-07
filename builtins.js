@@ -3,6 +3,7 @@ import { snippetCompletion } from '@codemirror/autocomplete';
 // For syntax highlighting
 export const ident2kind = {};
 export const completions = [];
+export const docs = {};
 
 export function normalizeIdentifier(name) {
   return name[0].toUpperCase() + name.substr(1).toLowerCase();
@@ -406,18 +407,28 @@ export function initIdent2kind(preludeEnv) {
   ].forEach(kw => { ident2kind[kw] = "keyword" });
 
   Object.entries(ident2kind).forEach(
-    entry => { completions.push({
-      label: entry[0],
-      type: entry[1] == "builtin" ? "function" : entry[1],
-      detail: entry[1],
-    }) }
+    entry => {
+      let doc = Docs[entry[0]];
+      completions.push({
+        label: entry[0],
+        type: entry[1] == "builtin" ? "function" : entry[1],
+        detail: entry[1],
+        info: doc ? () => {
+          const elem = document.createElement("div");
+          elem.innerHTML = doc;
+          return elem;
+        } : undefined,
+      })
+    }
   );
+  console.log(Docs);
   completions.push(snippetCompletion(
     "Prints (${});",
     {
       label: "Prints",
       type: "snippet",
       detail: "snippet",
+      info: "Print a list of values",
     }
   ));
   completions.push(snippetCompletion(
@@ -426,6 +437,7 @@ export function initIdent2kind(preludeEnv) {
       label: "Def",
       type: "snippet",
       detail: "snippet",
+      info: "Define a function",
     }
   ));
 }

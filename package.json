@@ -29,6 +29,7 @@
     "@codemirror/view": "^6.32.0",
     "@lezer/highlight": "^1.2.0",
     "@lezer/lr": "^1.4.2",
+    "marked": "^14.1.1",
     "web-tree-sitter": "^0.22.6"
   }
 }
