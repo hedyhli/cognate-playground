@@ -231,24 +231,42 @@ export const Builtins = {
     }
   },
   First: {
-    params: [{name: 'list', type: 'list'}],
-    returns: 'any',
-    fn: (l) => {
-      if (l.list.length == 0) {
-        return { error: 'attempt to get first item of empty list' };
+    overloads: [
+      {
+        params: [{name: 'list', type: 'list'}],
+        returns: 'any',
+        fn: (l) => {
+          if (l.list.length == 0) {
+            return { error: 'attempt to get first item of empty list' };
+          }
+          return l.list[l.list.length-1];
+        }
+      },
+      {
+        params: [{name: 'string', type: 'string'}],
+        returns: 'string',
+        fn: (s) => s.value.length == 0 ? { error: "attempt to get Head of empty string" } : s.value[0],
       }
-      return l.list[l.list.length-1];
-    }
+    ]
   },
   Rest: {
-    params: [{name: 'list', type: 'list'}],
-    returns: 'list',
-    fn: (l) => {
-      if (l.list.length == 0) {
-        return { error: 'attempt to get rest of empty list' };
+    overloads: [
+      {
+        params: [{name: 'list', type: 'list'}],
+        returns: 'list',
+        fn: (l) => {
+          if (l.list.length == 0) {
+            return { error: 'attempt to get rest of empty list' };
+          }
+          return [...l.list].splice(0, l.list.length-1);
+        }
+      },
+      {
+        params: [{name: 'string', type: 'string'}],
+        returns: 'string',
+        fn: (s) => s.value.length == 0 ? { error: "attempt to get Tail of empty string" } : s.value.substr(1),
       }
-      return [...l.list].splice(0, l.list.length-1);
-    }
+    ]
   },
   Empty: {
     params: [],
@@ -261,29 +279,23 @@ export const Builtins = {
     fn: (l) => l.list.length == 0,
   },
   Length: {
-    params: [{name: 'list', type: 'list'}],
-    returns: 'number',
-    fn: (l) => l.list.length,
+    overloads: [
+      {
+        params: [{name: 'list', type: 'list'}],
+        returns: 'number',
+        fn: (l) => l.list.length,
+      },
+      {
+        params: [{name: 'string', type: 'string'}],
+        returns: 'number',
+        fn: (s) => s.value.length,
+      }
+    ]
   },
   Join: {
     params: [{name: 'string', type: 'string'}, {name: 'string', type: 'string'}],
     returns: 'string',
     fn: (a, b) => a.value + b.value,
-  },
-  Head: {
-    params: [{name: 'string', type: 'string'}],
-    returns: 'string',
-    fn: (s) => s.value.length == 0 ? { error: "attempt to get Head of empty string" } : s.value[0],
-  },
-  Tail: {
-    params: [{name: 'string', type: 'string'}],
-    returns: 'string',
-    fn: (s) => s.value.length == 0 ? { error: "attempt to get Tail of empty string" } : s.value.substr(1),
-  },
-  "String-length": {
-    params: [{name: 'string', type: 'string'}],
-    returns: 'number',
-    fn: (s) => s.value.length,
   },
   Substring: {
     params: [

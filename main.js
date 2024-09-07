@@ -231,11 +231,11 @@ Print N;
 Let N 1;`,
   strings: `~~ String literals are denoted by ""
 Let A "apples + banana + peanuts";
-Put "Head:    \\t";
-Print Head A;
+Put "First:    \\t";
+Print First A;
 
-Put "Tail:    \\t";
-Print Tail A;
+Put "Rest:    \\t";
+Print Rest A;
 
 Put "Substring: \\t";
 ~~ Ranges are inclusive on both ends.
@@ -294,6 +294,14 @@ Print List (1 2 3 4 5);
 
 Print "\\nShow strings literally when in a list:";
 Print List ("1 2 \\t 3 \\n 4");
+
+~~ Some useful list functions;
+Print Index 4 List (0 1 2 3 4);
+Print First of List (0 1 2);
+Print Rest of List (0 1 2);
+Print Length of List (0 1 2);
+
+~~ Notice how Length is used for both strings and lists.
 `,
 };
 

@@ -587,9 +587,29 @@ export class Runner {
     }
 
     const handleBuiltin = (fnName) => {
-      const {params, returns, fn} = Builtins[fnName];
+      const builtin = Builtins[fnName];
+      let useFn;
       let args = [];
-      for(let i = 0; i < params.length; i++) {
+
+      if (builtin.overloads != undefined) {
+        let draftError = `expected one of [${builtin.overloads.map((o) => o.params.map((p) => p.type)).join(', ')}]`
+        let arg = op.pop();
+        if (arg == undefined) {
+          error = draftError;
+          return;
+        }
+        args.push(arg);
+        useFn = builtin.overloads.find((test) => test.params[0].type == arg.type);
+        if (useFn == undefined) {
+          error = `${draftError}, got ${arg.type}`;
+          return;
+        }
+      } else {
+        useFn = builtin;
+      }
+
+      const {params, returns, fn} = useFn;
+      for(let i = args.length; i < params.length; i++) {
         let param = params[i];
         let arg = expect(exists(op.pop(), param.name), param.type);
         if (arg == undefined) {
