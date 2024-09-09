@@ -5,6 +5,8 @@ import * as marked from 'marked';
 
 const CALLSTACK_LIMIT = 3000;
 
+const cacheRegex = Object.create(null);
+
 export class PreludeError extends Error {
   constructor(message, options) {
     super(message, options);
@@ -767,32 +769,22 @@ export class Runner {
                 error = `in ${this.textMarked('Regex')}: empty regex is invalid`;
                 break;
               }
+              let t = expect(exists(op.pop(), 'test string'), 'string');
+              if (t == undefined) {
+                error = `in ${this.textMarked('Regex')}: ${error}`;
+                break;
+              }
+
               let regex;
               try {
-                regex = new RegExp(s.value);
+                regex = cacheRegex[s.value] || new RegExp(s.value);
               } catch (err) {
                 error = `in ${this.textMarked('Regex')}: regex compile error: ${err}`;
                 break;
               }
-              op.push({
-                type: 'block',
-                body: [{type: 'identifier', value: '_applyRegex'}],
-                env: {regex},
-              });
-              break;
-            }
-            case '_applyRegex': {
-              let regex = env.regex;
-              if (regex == undefined) {
-                error = "internal error when applying regex!";
-                break;
-              }
-              let s = expect(exists(op.pop(), 'string'), 'string');
-              if (s == undefined) {
-                error = `in applying regex: ${error}`;
-                break;
-              }
-              op.push(value2object.boolean(regex.test(s.value)));
+              cacheRegex[s.value] = regex;
+
+              op.push(value2object.boolean(regex.test(t.value)));
               break;
             }
             case 'Regex-match': {
@@ -802,32 +794,23 @@ export class Runner {
                 error = `in ${this.textMarked('Regex-match')}: empty regex is invalid`;
                 break;
               }
+              let t = expect(exists(op.pop(), 'test string'), 'string');
+              if (t == undefined) {
+                /// Not supported by CognaC
+                error = `in ${this.textMarked('Regex-match')}: ${error}`;
+                break;
+              }
+
               let regex;
               try {
-                regex = new RegExp(s.value);
+                regex = cacheRegex[s.value] || new RegExp(s.value);
               } catch (err) {
                 error = `in ${this.textMarked('Regex-match')}: regex compile error: ${err}`;
                 break;
               }
-              op.push({
-                type: 'block',
-                body: [{type: 'identifier', value: '_matchRegex'}],
-                env: {regex},
-              });
-              break;
-            }
-            case '_matchRegex': {
-              let regex = env.regex;
-              if (regex == undefined) {
-                error = "internal error when matching regex!";
-                break;
-              }
-              let s = expect(exists(op.pop(), 'string'), 'string');
-              if (s == undefined) {
-                error = `in matching regex: ${error}`;
-                break;
-              }
-              let result = regex.exec(s.value);
+              cacheRegex[s.value] = regex;
+
+              let result = regex.exec(t.value);
               if (result) {
                 for (let capture of [...result].splice(1).reverse()) {
                   op.push(value2object.string(capture));
