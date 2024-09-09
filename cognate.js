@@ -1,6 +1,6 @@
 // Uncomment for tests and packaging
 // import TreeSitter from 'web-tree-sitter';
-import { ident2kind, Builtins, initIdent2kind, normalizeIdentifier, value2object, Docs as builtinsDocs } from './builtins.js';
+import { ident2kind, Builtins, initIdent2kind, normalizeIdentifier, value2object, Docs as builtinsDocs, cognate2string, escape, stringEscapes } from './builtins.js';
 import * as marked from 'marked';
 
 const CALLSTACK_LIMIT = 3000;
@@ -125,78 +125,6 @@ const node2object = {
   }),
 };
 
-// Taken from lodash
-export function escape(string) {
-  const htmlEscapes = {
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      '"': '&quot;',
-      "'": '&#39;',
-  };
-  const reUnescapedHtml = /[&<>"']/g;
-  const reHasUnescapedHtml = RegExp(reUnescapedHtml.source);
-
-  return string && reHasUnescapedHtml.test(string)
-        ? string.replace(reUnescapedHtml, (chr) => htmlEscapes[chr])
-        : string || '';
-}
-
-const stringEscapes = {b: '\b', t: '\t', n: '\n', v: '\v', f: '\f', r: '\r', '"': '"', '\\': '\\'};
-const stringEscapesReverse = {'\b': '\\b', '\t': '\\t', '\n': '\\n', '\v': '\\v', '\f': '\\f', '\r': '\\r', '"': '\\"', '\\': '\\\\'};
-
-function reprString(str) {
-  let chars = str.split('');
-  let quoted = chars.map((char) => stringEscapesReverse[char] || char).join('');
-  return '"' + quoted + '"';
-}
-
-// Object to string for the output
-function cognate2string(item, quotedString, checkedBoxes) {
-  if (item == undefined) {
-    return undefined;
-  }
-
-  if (checkedBoxes == undefined) {
-    checkedBoxes = [];
-  }
-
-  switch (item.type) {
-    case 'block':
-      return value2object.string('(block)');
-    case 'string': {
-      if (quotedString) {
-        // convert back string escapes
-        return value2object.string(reprString(item.value));
-      }
-      // Otherwise, fall through
-    }
-    case 'symbol':
-      return value2object.string(item.value);
-    case 'number':
-      return value2object.string(item.value.toString());
-    case 'boolean':
-      return value2object.string(item.value ? 'True' : 'False');
-    case 'box': {
-      if (checkedBoxes.find((check) => check == item)) {
-        return value2object.string('...');
-      }
-      // PERF: ???
-      checkedBoxes = [...checkedBoxes, item];
-      let s = cognate2string(item.value[0], quotedString, checkedBoxes);
-      s.value = `[${s.value}]`;
-      return s;
-    }
-    case 'list':
-      // XXX: Does not support unknown item type within the map call.
-      return value2object.string(`(${[...item.list].reverse().map(item => cognate2string(item, true, checkedBoxes).value).join(' ')})`);
-    default:
-      return {
-        error: `unknown item of type ${escape(item.type)}, value ${escape(item)}`,
-      };
-  }
-}
-
 export const mockFrontend = {
   errors: {
     add() {},
@@ -265,9 +193,11 @@ export class Runner {
       case 'symbol':
         return `\\${escape(item.value)}`;
       case 'list':
-        return "(" + [...item.list].reverse().map(this.repr, this).join(", ") + ")"
+        return "(" + [...item.list].reverse().map(this.repr, this).join(", ") + ")";
       case 'box':
         return "<" + this.repr(item.value[0]) + ">";
+      case 'list':
+        return "(" + [...item.list].reverse().map(this.repr, this).join(", ") + ")";
       default:
         return this.textLight(`(unknown item of type ${this.textMarked(escape(item.type))})`);
     }
@@ -286,7 +216,9 @@ export class Runner {
         }
         output += "], ";
       } else {
-        output += `${this.repr(item)}, `;
+        // output += `${this.repr(item)}, `;
+        let s = cognate2string(item);
+        output += `${s.style ? this.ui.style[s.style](s.value) : s.value}, `;
       }
     };
     arr.forEach(iter);
@@ -437,7 +369,6 @@ export class Runner {
                   currentBlock.env[previous.value] = { type: '_predeclared', kind: item.value };
                 }
                 if (!userCode && currentBlock.env.parent == undefined) {
-                  console.log("setting", previous.value);
                   builtinsDocs[previous.value] = marked.parse(item.doc);
                 }
               }
@@ -514,7 +445,6 @@ export class Runner {
 
     // Parse
     this.tree = G.ts.parser.parse(code, this.tree);
-    console.table(builtinsDocs);
     let result = this.parse(this.tree, G.preludeEnv, true);
     this.analyze(result.rootBlock);
     this.editor.applyMarks(true);
@@ -778,6 +708,40 @@ export class Runner {
               op.push(value2object.list(list));
               break;
             }
+            case 'Table': {
+              let block = expect(exists(op.pop(), 'block'), 'block');
+              if (block == undefined) {
+                error = `in ${this.textMarked('Table')}: ${error}`;
+                break;
+              }
+              if (block.body.length % 2 != 0) {
+                error = `in ${this.textMarked('Table')}: Table initializer must be key-value pairs`;
+                break;
+              }
+
+              let pairs = [];
+              let result = { error: "" };
+              try {
+                result = this.process(block, pairs, beginSignals);
+              } catch (err) {
+                if (beginSignals.includes(err) || err instanceof StopSignal)
+                  throw err;
+                if (!(err instanceof BeginSignal))
+                  console.error(err);
+                result.error = result.error || err.message;
+              }
+              if (result.error != "") {
+                error = `in ${this.textMarked('List')}: ${result.error}`;
+                break;
+              }
+
+              let table = Object.create(null);
+              for (let i = 0; i < pairs.length; i += 2) {
+                table = Builtins.Insert.fn(pairs[i+1], pairs[i], {table: table});
+              }
+              op.push(value2object.table(table));
+              break;
+            }
             case 'Box': {
               let value = exists(op.pop(), 'value');
               if (value == undefined) {
@@ -1022,4 +986,4 @@ export class Runner {
   }
 };
 
-export { initIdent2kind, ident2kind };
+export { initIdent2kind, ident2kind, escape };

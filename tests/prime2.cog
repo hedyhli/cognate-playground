@@ -1,5 +1,4 @@
-Print "XFAIL: Table";
-~Def Factor (Zero? Modulo Swap);
+Def Factor (Zero? Modulo Swap);
 
 Def Primes (
 	Let U is upper bound;
@@ -16,4 +15,4 @@ Let P be Primes up to 100;
 Print If And Not . 50 P . 37 P
 	"PASS: Prime numbers using a table"
 else
-	"FAIL: Prime numbers using a table";~
+	"FAIL: Prime numbers using a table";

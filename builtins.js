@@ -18,31 +18,145 @@ export const value2object = {
   // And this.
   symbol: value => ({ type: 'symbol', value: value }),
   list: list => ({ type: 'list', list: list }),
+  table: table => ({ type: 'table', table: table }),
   box: value => ({ type: 'box', value: [value] }),
   any: anything => anything,
 };
+
+export const stringEscapes = {b: '\b', t: '\t', n: '\n', v: '\v', f: '\f', r: '\r', '"': '"', '\\': '\\'};
+const stringEscapesReverse = {'\b': '\\b', '\t': '\\t', '\n': '\\n', '\v': '\\v', '\f': '\\f', '\r': '\\r', '"': '\\"', '\\': '\\\\'};
+
+function reprString(str) {
+  let chars = str.split('');
+  let quoted = chars.map((char) => stringEscapesReverse[char] || char).join('');
+  return '"' + quoted + '"';
+}
+
+function table2string_inner(table, checkedBoxes) {
+  if (!table || !table.key) return '';
+  let s = '';
+  s += table2string_inner(table.left, checkedBoxes);
+  s += cognate2string(table.key, true, checkedBoxes).value;
+  s += ':';
+  s += cognate2string(table.value, true, checkedBoxes).value;
+  s += ' ';
+  s += table2string_inner(table.right, checkedBoxes);
+  return s;
+}
+
+// Taken from lodash
+export function escape(string) {
+  const htmlEscapes = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+  };
+  const reUnescapedHtml = /[&<>"']/g;
+  const reHasUnescapedHtml = RegExp(reUnescapedHtml.source);
+
+  return string && reHasUnescapedHtml.test(string)
+        ? string.replace(reUnescapedHtml, (chr) => htmlEscapes[chr])
+        : string || '';
+}
+
+// Object to string for the output
+export function cognate2string(item, quotedString, checkedBoxes) {
+  if (item == undefined) {
+    return undefined;
+  }
+
+  if (checkedBoxes == undefined) {
+    checkedBoxes = [];
+  }
+
+  switch (item.type) {
+    case 'block':
+      return value2object.string('(block)');
+    case 'string': {
+      if (quotedString) {
+        // convert back string escapes
+        return value2object.string(reprString(item.value));
+      }
+      return value2object.string(item.value);
+    }
+    case 'symbol': {
+      let s = value2object.string(item.value);
+      s.style = 'marked';
+      return s;
+    }
+    case 'number':
+      return value2object.string(item.value.toString());
+    case 'boolean': {
+      let s = value2object.string(item.value ? 'True' : 'False');
+      s.style = 'marked';
+      return s;
+    }
+    case 'box': {
+      if (checkedBoxes.find((check) => check == item)) {
+        return value2object.string('...');
+      }
+      // PERF: ???
+      checkedBoxes = [...checkedBoxes, item];
+      let s = cognate2string(item.value[0], quotedString, checkedBoxes);
+      s.value = `[${s.value}]`;
+      return s;
+    }
+    case 'list':
+      // XXX: Does not support unknown item type within the map call.
+      return value2object.string(`(${[...item.list].reverse().map(item => cognate2string(item, true, checkedBoxes).value).join(' ')})`);
+    case 'table':
+      return value2object.string(`{ ${table2string_inner(item.table, checkedBoxes)}}`);
+    default:
+      return {
+        error: `unknown item of type ${escape(item.type)}`,
+      };
+  }
+}
+
+const typeOrder = {number: 1, symbol: 2, boolean: 3, string: 4, box: 5, list: 6, table: 7, io: 8, block: 9};
 
 function _deg2rad(deg) { return deg * Math.PI / 180; }
 function _rad2deg(rad) { return rad * 180 / Math.PI; }
 
 function _compare(x, y) {
-  if (x.type != y.type)
-  return false;
+  if (x.type != y.type) {
+    let diff = typeOrder[x.type] - typeOrder[y.type];
+    return diff == 0 ? 0 : diff > 0 ? 1 : -1;
+  }
   switch (x.type) {
     case 'list': {
       let l1 = x.list, l2 = y.list;
-      if (l1.length != l2.length)
-      return false;
-      return l1.every((a1, i) => _compare(a1, l2[i]));
+      let diff = 0;
+      for (let i = 0; diff == 0 && i < l1.length; i++) {
+        if (!l2[i])
+          diff = 1;
+        else
+          diff = _compare(l1[i], l2[i]);
+      }
+      if (l1.length < l2.length) {
+        diff = -1;
+      }
+      return diff;
     }
     case 'block':
-      return x == y;
     case 'box':
-      return _compare(x.value[0], y.value[0]);
+      return x == y ? 0 : 1;
     case 'number':
-      return Math.abs(x.value - y.value) <= 0.5e-14 * Math.abs(x.value);
+      return Math.abs(x.value - y.value) <= 0.5e-14 * Math.abs(x.value) ? 0
+        : x.value > y.value ? 1 : -1;
+    case 'string':
+    case 'symbol':
+    case 'boolean':
+      return x.value == y.value ? 0 : x.value > y.value ? 1 : -1;
+    case 'table': {
+      let t1 = x.table, t2 = y.table;
+      return 0;
+    }
     default:
-      return x.value === y.value;
+      // unreachable
+      return 1;
   }
 }
 
@@ -175,12 +289,12 @@ export const Builtins = {
   "==": {
     params: [{name: 'operand', type: 'any'}, {name: 'operand', type: 'any'}],
     returns: 'boolean',
-    fn: (a, b) => _compare(a, b),
+    fn: (a, b) => _compare(a, b) == 0,
   },
   "!=": {
     params: [{name: 'operand', type: 'any'}, {name: 'operand', type: 'any'}],
     returns: 'boolean',
-    fn: (a, b) => !_compare(a, b),
+    fn: (a, b) => _compare(a, b) != 0,
   },
   ">": {
     params: [{name: 'operand', type: 'number'}, {name: 'operand', type: 'number'}],
@@ -358,7 +472,79 @@ export const Builtins = {
     returns: 'string',
     fn: s => s.value.toLowerCase(),
   },
+  Insert: {
+    params: [
+      {name: 'key', type: 'any'},
+      {name: 'value', type: 'any'},
+      {name: 'table', type: 'table'},
+    ],
+    returns: 'table',
+    fn: (key, value, table) => {
+      if (['box', 'block'].includes(key.type)) {
+        return {error: `can't index table with ${key.type}`};
+      }
+      return table_insert(key, value, table.table);
+    }
+  },
+  Has: {
+    params: [{name: 'key', type: 'any'}, {name: 'table', type: 'table'}],
+    returns: 'boolean',
+    fn: (key, table) => {
+      if (['box', 'block'].includes(key.type)) {
+        return {error: `can't index table with ${key.type}`};
+      }
+      return table_get(key, table.table) != undefined;
+    }
+  },
+  ".": {
+    params: [{name: 'key', type: 'any'}, {name: 'table', type: 'table'}],
+    returns: 'any',
+    fn: (key, table) => {
+      if (['box', 'block'].includes(key.type)) {
+        return {error: `can't index table with ${key.type}`};
+      }
+      let value = table_get(key, table.table);
+      if (value == undefined) {
+        return {error: `${cognate2string(key).value} is not in table`};
+      }
+      return value;
+    }
+  }
 };
+
+function table_get(key, table) {
+  if (!table || !table.key) return;
+  if (_compare(key, table.key) == 0) return table.value;
+  return table_get(key, table.left) || table_get(key, table.right);
+}
+
+function table_insert(key, value, table)  {
+  if (!table || !table.key) {
+    let T = Object.create(null);
+    T.key = key;
+    T.value = value;
+    T.level = 1;
+    return T;
+  }
+  let T = Object.create(null);
+  T.key = table.key;
+  T.value = table.value;
+  T.left = table.left;
+  T.right = table.right;
+  T.level = table.level;
+  switch (_compare(table.key, key)) {
+    case 0:
+      T.key = key;
+      T.value = value;
+      break;
+    case 1:
+      T.left = table_insert(key, value, table.left);
+      break;
+    default:
+      T.right = table_insert(key, value, table.right);
+  }
+  return T;
+}
 
 export function initIdent2kind(preludeEnv) {
   Object.keys(Builtins).forEach(name => { ident2kind[name] = "builtin" });
@@ -378,6 +564,7 @@ export function initIdent2kind(preludeEnv) {
     "Show",
     "Put",
     "List",
+    "Table",
     "Box",
     "Unbox",
     "Regex",
@@ -421,7 +608,6 @@ export function initIdent2kind(preludeEnv) {
       })
     }
   );
-  console.log(Docs);
   completions.push(snippetCompletion(
     "Prints (${});",
     {

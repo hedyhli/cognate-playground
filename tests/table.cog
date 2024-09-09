@@ -1,5 +1,5 @@
 Print "XFAIL: Table";
-~Let T be Table (
+Let T be Table (
 	\foo is "bar";
 	"bar" is \foo;
 	12 is 13;
@@ -37,18 +37,14 @@ Print If And Has \foo T Not Has \bar T
 else
 	"FAIL: Has";
 
-~
-~
-Let T3 be Remove \foo from T;
+~Let T3 be Remove \foo from T;
 
 Print If Not Has \foo T3
 	"PASS: Removing keys"
 else
-	"FAIL: Removing keys";
-~
-~
+	"FAIL: Removing keys";~
 
-Print If == List (12 \foo "bar") Keys T
+~Print If == List (12 \foo "bar") Keys T
 	"PASS: Getting list of keys in table"
 else
 	"FAIL: Getting list of keys in table";
