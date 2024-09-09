@@ -151,13 +151,26 @@ function _compare(x, y) {
     case 'boolean':
       return x.value == y.value ? 0 : x.value > y.value ? 1 : -1;
     case 'table': {
-      let t1 = x.table, t2 = y.table;
-      return 0;
+      return compare_table(x.table, y.table);
     }
     default:
       // unreachable
       return 1;
   }
+}
+
+function compare_table(a, b) {
+  if (!a || !a.key) return (!b || !b.key) ? 0 : -1;
+  if (!b || !b.key) return 1;
+
+  let diff = 0;
+
+  if (!(diff = _compare(a.key, b.key)))
+    if (!(diff = _compare(a.value, b.value)))
+      if (!(diff = compare_table(a.left, b.left)))
+        diff = compare_table(a.right, b.right);
+
+  return diff;
 }
 
 function singleNumberFn(fn, name) {
@@ -509,8 +522,32 @@ export const Builtins = {
       }
       return value;
     }
-  }
+  },
+  Keys: {
+    params: [{name: 'table', type: 'table'}],
+    returns: 'list',
+    fn: (table) => table_entries(table.table).map((e) => e.key),
+  },
+  Values: {
+    params: [{name: 'table', type: 'table'}],
+    returns: 'list',
+    fn: (table) => table_entries(table.table).map((e) => e.value),
+  },
 };
+
+function table_entries(table) {
+  if (!table || !table.key) return [];
+
+  function _entries(t) {
+    if (t.right) _entries(t.right);
+    l.push({ key: t.key, value: t.value });
+    if (t.left) _entries(t.left);
+  }
+
+  const l = [];
+  _entries(table);
+  return l;
+}
 
 function table_get(key, table) {
   if (!table || !table.key) return;
