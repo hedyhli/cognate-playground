@@ -10,8 +10,8 @@ uses a JavaScript implementation of Cognate.
 <img src="https://raw.githubusercontent.com/hedyhli/cognate-playground/main/screenshot.png" width=800 />
 
 It currently supports about 90% of all builtins from the C prelude, and all
-types except Table and IO. Discrepancies of this implementation that can be
-illustrated by tests can be found with `XFAIL` markers in the tests directory.
+types except IO. Discrepancies of this implementation that can be illustrated by
+tests can be found with `XFAIL` markers in the tests directory.
 
 Files of interest
 - index.html
@@ -52,7 +52,7 @@ The runtime and cognate implementation
 - [X] Tests
 - [ ] Consider using something like decimal.js for floating point precision
 - [ ] Mock I/O
-- [ ] Table
+- [X] Table
 
 The Playground
 - [X] Presets of example code
