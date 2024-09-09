@@ -735,7 +735,7 @@ export class Runner {
                 break;
               }
 
-              let table = Object.create(null);
+              let table;
               for (let i = 0; i < pairs.length; i += 2) {
                 table = Builtins.Insert.fn(pairs[i+1], pairs[i], {table: table});
               }

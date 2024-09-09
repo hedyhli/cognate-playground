@@ -536,7 +536,7 @@ export const Builtins = {
 };
 
 function table_entries(table) {
-  if (!table || !table.key) return [];
+  if (!table) return [];
 
   function _entries(t) {
     if (t.right) _entries(t.right);
@@ -550,13 +550,13 @@ function table_entries(table) {
 }
 
 function table_get(key, table) {
-  if (!table || !table.key) return;
+  if (!table) return;
   if (_compare(key, table.key) == 0) return table.value;
   return table_get(key, table.left) || table_get(key, table.right);
 }
 
 function table_insert(key, value, table)  {
-  if (!table || !table.key) {
+  if (!table) {
     let T = Object.create(null);
     T.key = key;
     T.value = value;
