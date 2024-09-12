@@ -397,9 +397,23 @@ export const Builtins = {
     fn: () => [],
   },
   "Empty?": {
-    params: [{name: 'list', type: 'list'}],
-    returns: 'boolean',
-    fn: (l) => l.list.length == 0,
+		overloads: [
+		{
+			params: [{name: 'list', type: 'list'}],
+			returns: 'boolean',
+			fn: (l) => l.list.length == 0,
+		},
+		{
+			params: [{name: 'string', type: 'string'}],
+			returns: 'boolean',
+			fn: (s) => s.value === "",
+		},
+		{
+			params: [{name: 'table', type: 'table'}],
+			returns: 'boolean',
+			fn: (t) => !t.table,
+		},
+		]
   },
   Length: {
     overloads: [
