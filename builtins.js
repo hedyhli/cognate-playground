@@ -304,11 +304,6 @@ export const Builtins = {
     returns: 'boolean',
     fn: (a, b) => _compare(a, b) == 0,
   },
-  "!=": {
-    params: [{name: 'operand', type: 'any'}, {name: 'operand', type: 'any'}],
-    returns: 'boolean',
-    fn: (a, b) => _compare(a, b) != 0,
-  },
   ">": {
     params: [{name: 'operand', type: 'number'}, {name: 'operand', type: 'number'}],
     returns: 'boolean',
