@@ -35,12 +35,12 @@ function reprString(str) {
 function table2string_inner(table, checkedBoxes) {
   if (!table || !table.key) return '';
   let s = '';
-  s += table2string_inner(table.left, checkedBoxes);
+  s += table2string_inner(table.right, checkedBoxes);
   s += cognate2string(table.key, true, checkedBoxes).value;
   s += ':';
   s += cognate2string(table.value, true, checkedBoxes).value;
   s += ' ';
-  s += table2string_inner(table.right, checkedBoxes);
+  s += table2string_inner(table.left, checkedBoxes);
   return s;
 }
 
@@ -115,7 +115,7 @@ export function cognate2string(item, quotedString, checkedBoxes) {
   }
 }
 
-const typeOrder = {number: 1, symbol: 2, boolean: 3, string: 4, box: 5, list: 6, table: 7, io: 8, block: 9};
+const typeOrder = {string: 1, symbol: 2, number: 3, block: 4, io: 5, table: 6, list: 7, box: 8, boolean: 9};
 
 function _deg2rad(deg) { return deg * Math.PI / 180; }
 function _rad2deg(rad) { return rad * 180 / Math.PI; }
@@ -561,9 +561,9 @@ function table_entries(table) {
   if (!table) return [];
 
   function _entries(t) {
-    if (t.right) _entries(t.right);
-    l.push({ key: t.key, value: t.value });
     if (t.left) _entries(t.left);
+    l.push({ key: t.key, value: t.value });
+    if (t.right) _entries(t.right);
   }
 
   const l = [];
