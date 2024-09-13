@@ -149,14 +149,14 @@ With \read "foo.txt" (
 );
 ```
 ~
-Def With (
+~Def With (
 	Let Mode be Of (Symbol?);
 	Let Filename be Of (String?);
 	Def Body;
 	Let Fp be Open as Mode Filename;
 	Body Fp;
 	Close Fp
-);
+);~
 
 ~
 Returns the list parameter reversed.
