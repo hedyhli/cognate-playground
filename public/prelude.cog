@@ -1,4 +1,14 @@
 ~
+Compares two values and returns True if they differ.
+
+```
+Print != 1 2;
+Print != 1 1;
+```
+~
+Def != as ( Not == );
+
+~
 Discard the top stack item.
 
 ```
@@ -139,7 +149,7 @@ With \read "foo.txt" (
 );
 ```
 ~
-~Def With (
+Def With (
 	Let Mode be Of (Symbol?);
 	Let Filename be Of (String?);
 	Def Body;
@@ -147,7 +157,6 @@ With \read "foo.txt" (
 	Body Fp;
 	Close Fp
 );
-~
 
 ~
 Returns the list parameter reversed.
@@ -157,8 +166,14 @@ Print Reverse List (1 2 3);
 ```
 ~
 Def Reverse (
-	Fold ( Push ) from Empty over List!;
-);
+	Def Reverse-helper (
+		Let L1 be List!;
+		Let L2 be List!;
+		Do If Empty? L2 ( L1 ) else ( Reverse-helper Push First L2 to L1 and Rest L2 )
+	);
+
+	Reverse-helper Empty;
+)
 
 ~
 Takes a block (`F`) and a list (`L`) as parameters. Applies a block to each element in a list
@@ -221,14 +236,19 @@ Print;
 ~
 Def Filter (
 	Def Predicate;
-	Let L be Of (List?);
-   Empty;
-	For each in L (
-		Let I;
-		Let R be Predicate I;
-		When R ( Push I );
+
+	Def Filter-helper (
+		Let Acc be List!;
+		Let L be List!;
+		Do If Empty? L ( Acc )
+		else (
+			Let R be Boolean! Predicate First L;
+			Do If R ( Filter-helper Push First L to Acc and Rest L )
+			   else ( Filter-helper Acc and Rest L );
+		)
 	);
-	Reverse;
+
+	Reverse Filter-helper Empty;
 );
 
 ~
@@ -394,15 +414,18 @@ Print
 ~
 Def Map (
 	Def F;
-	Let L be a List!;
 
-	Do If Empty? L ( L )
-	else (
-		Let X be First of L;
-		Let Res be F X;
-
-		return Push Res to Map (F) over Rest of L;
+	Def Map-helper (
+		Let Acc be List!;
+		Let L be List!;
+		Do If Empty? L ( Acc )
+		else (
+			Let R be F of First L;
+			Map-helper Push R to Acc and Rest L
+		)
 	);
+
+	Reverse Map-helper Empty;
 );
 
 ~
@@ -429,17 +452,22 @@ Print Take 4 from Range 1 to 10;
 ```
 ~
 Def Take (
-	Let N be Of (Integer?);
-	Let L be Of (List?);
-
-	Do If Zero? N ( Empty list ) else (
-		When Empty? L ( Error "Cannot Take more elements than in list" );
-		Push First L to Take - 1 N from Rest of L
+	Def Take-helper (
+		Let Acc be List!;
+		Let N be Number!;
+		Let L be List!;
+		Do If Zero? N ( Acc )
+		else (
+			When Empty? L ( Error "Cannot Take more elements than in list" );
+			Take-helper Push First L to Acc taking - 1 N from Rest L;
+		)
 	);
+
+	Reverse Take-helper Empty;
 );
 
 ~
-Takes an integer (`N`) and a list (`L`) as parameters. Returns the `N`th element (indexed from zero) of `L`.
+Takes an integer (`N`) and a list or string (`L`) as parameters. Returns the `N`th element (indexed from zero) of `L`.
 
 ```
 Print Index 4 of Range 0 to 100;
@@ -447,15 +475,13 @@ Print Index 4 of Range 0 to 100;
 ~
 Def Index (
 	Let N be Of (Integer?);
-	Let L be List!;
+	Let L;
 
 	When < 0 N ( Error Join "Invalid index " Show N );
+	When Empty? L ( Error "Index is beyond the end" );
 
 	Do If Zero? N ( return First element of L )
-	else (
-		When Empty? L ( Error "Index is beyond end of list" );
-		Index - 1 N of Rest of L
-	);
+	else ( Index - 1 N of Rest of L );
 );
 
 ~
@@ -474,11 +500,15 @@ Def Range (
 		Error Join Join Join "Invalid range " Show Start "..." Show End;
 	);
 
-	Reverse List (
-		Start;
-		While (Triplet ; < End) ( + 1 );
-		Drop; Drop;
-	)
+	Def Range-helper (
+		Let Start be Number!;
+		Let End be Number!;
+		Let L be List!;
+
+		Do If < End Start ( Range-helper from + 1 Start to End with Push Start to L ) else ( L );
+	);
+
+	Reverse Range-helper from Start to End with Empty;
 );
 
 ~

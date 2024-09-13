@@ -304,11 +304,6 @@ export const Builtins = {
     returns: 'boolean',
     fn: (a, b) => _compare(a, b) == 0,
   },
-  "!=": {
-    params: [{name: 'operand', type: 'any'}, {name: 'operand', type: 'any'}],
-    returns: 'boolean',
-    fn: (a, b) => _compare(a, b) != 0,
-  },
   ">": {
     params: [{name: 'operand', type: 'number'}, {name: 'operand', type: 'number'}],
     returns: 'boolean',
@@ -402,9 +397,23 @@ export const Builtins = {
     fn: () => [],
   },
   "Empty?": {
-    params: [{name: 'list', type: 'list'}],
-    returns: 'boolean',
-    fn: (l) => l.list.length == 0,
+		overloads: [
+		{
+			params: [{name: 'list', type: 'list'}],
+			returns: 'boolean',
+			fn: (l) => l.list.length == 0,
+		},
+		{
+			params: [{name: 'string', type: 'string'}],
+			returns: 'boolean',
+			fn: (s) => s.value === "",
+		},
+		{
+			params: [{name: 'table', type: 'table'}],
+			returns: 'boolean',
+			fn: (t) => !t.table,
+		},
+		]
   },
   Length: {
     overloads: [
@@ -499,6 +508,19 @@ export const Builtins = {
       return table_insert(key, value, table.table);
     }
   },
+  Remove: {
+    params: [
+      {name: 'key', type: 'any'},
+      {name: 'table', type: 'table'},
+    ],
+    returns: 'table',
+    fn: (key, table) => {
+      if (['box', 'block'].includes(key.type)) {
+        return {error: `can't index table with ${key.type}`};
+      }
+      return table_remove(key, table.table);
+    }
+  },
   Has: {
     params: [{name: 'key', type: 'any'}, {name: 'table', type: 'table'}],
     returns: 'boolean',
@@ -549,26 +571,47 @@ function table_entries(table) {
   return l;
 }
 
+function mktable(key, value, left, right, level)
+{
+  let T = Object.create(null);
+  T.key = key;
+  T.value = value;
+  T.left = left;
+  T.right = right;
+  T.level = level;
+  return T;
+}
+
 function table_get(key, table) {
   if (!table) return;
   if (_compare(key, table.key) == 0) return table.value;
   return table_get(key, table.left) || table_get(key, table.right);
 }
 
+function table_skew(T) {
+  if (!T) return null;
+  else if (!T.left) return T;
+  else if (T.left.level == T.level)
+    return mktable(T.left.key, T.left.value, T.left.left,
+        mktable(T.key, T.value, T.left.right, T.right, T.level),
+        T.left.level);
+  else return T;
+}
+
+function table_split(T)
+{
+  if (!T) return null;
+  else if (!T.right || !T.right.right) return T;
+  else if (T.level == T.right.right.level)
+    return mktable(T.right.key, T.right.value,
+        mktable(T.key, T.value, T.left, T.right.left, T.level),
+        T.right.right, T.right.level);
+  else return T;
+}
+
 function table_insert(key, value, table)  {
-  if (!table) {
-    let T = Object.create(null);
-    T.key = key;
-    T.value = value;
-    T.level = 1;
-    return T;
-  }
-  let T = Object.create(null);
-  T.key = table.key;
-  T.value = table.value;
-  T.left = table.left;
-  T.right = table.right;
-  T.level = table.level;
+  if (!table) return mktable(key, value, null, null, 1);
+  let T = mktable(table.key, table.value, table.left, table.right, table.level);
   switch (_compare(table.key, key)) {
     case 0:
       T.key = key;
@@ -580,7 +623,64 @@ function table_insert(key, value, table)  {
     default:
       T.right = table_insert(key, value, table.right);
   }
+  T = table_skew(T);
+  T = table_split(T);
   return T;
+}
+
+function table_remove(key, T) {
+  if (!T) return { error: `${cognate2string(key).value} is not in table`, };
+  let diff = _compare(T.key, key);
+  let T2 = null;
+
+  if (diff < 0) {
+    let N = table_remove(key, T.right);
+    if (N && N.error) return N;
+    T2 = mktable(T.key, T.value, T.left, N, T.level);
+  }
+  else if (diff > 0) {
+    let N = table_remove(key, T.left);
+    if (N && N.error) return N;
+    T2 = mktable(T.key, T.value, N, T.right, T.level);
+  }
+  else if (!T.left && !T.right) return null;
+  else if (!T.left) {
+      let L = T.right;
+      while (L.left) L = L.left;
+      let N = table_remove(L.key, T.right);
+      if (N && N.error) return N;
+      T2 = mktable(L.key, L.value, T.left, N, L.level);
+  }
+  else {
+      let L = T.left;
+      while (L.right) L = L.right;
+      let N = table_remove(L.key, T.left);
+      if (N && N.error) return N;
+      T2 = mktable(L.key, L.value, N, T.right, L.level);
+  }
+
+  if (T2.left && T2.right) {
+    let should_be = 1 + Math.min(T2.left.level, T2.right.level);
+    if (should_be < T2.level) {
+      T2.level = should_be;
+      if (should_be < T2.right.level) T2.right.level = should_be
+    }
+  }
+
+  /*
+  if (T2.right) {
+    T2.right.right = table_skew(T2.right.right);
+    T2.right = table_skew(T2.right);
+  }
+  */
+
+  T2 = table_skew(T2);
+
+  //if (T2.right) T2.right = table_split(T2.right);
+
+  T2 = table_split(T2);
+
+  return T2;
 }
 
 export function initIdent2kind(preludeEnv) {
