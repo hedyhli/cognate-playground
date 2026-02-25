@@ -1,0 +1,19 @@
+lib
+- consider typescript
+
+
+
+
+
+embedding to cog site
+- querySelectorAll
+- if any, init runner
+  - attach codemirror
+  - attach listener that will run code
+  for results, can use a `playground`-div.querySelector('output') etc
+
+cognate -> js dumb transpile
+- work on top of lexer
+- convert blocks to arrow functions
+- use JS hoisting and closures directly
+- use const for `Let`
